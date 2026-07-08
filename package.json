@@ -16,6 +16,7 @@
     "test:e2e": "npm run test:e2e -w apps/api && npm run test:e2e -w apps/web",
     "test:e2e:report": "npm run reports:prepare && npm run test:e2e:report -w apps/web",
     "quality": "npm run lint && npm run test && npm run build",
+    "perf:k6": "k6 run perf/k6/datashare-load.js",
     "reports": "npm run lint:report && npm run test:coverage",
     "reports:prepare": "node -e \"const fs=require('fs'); ['reports/api/lint','reports/api/coverage','reports/web/lint','reports/web/coverage','reports/web/cypress'].forEach((dir)=>fs.mkdirSync(dir,{recursive:true}))\"",
     "api:db:generate": "npm run db:generate -w apps/api",
