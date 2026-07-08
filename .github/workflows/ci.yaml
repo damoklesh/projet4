@@ -1,0 +1,155 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  quality:
+    name: Quality
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.12'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npm run api:db:generate
+
+      - name: Run quality
+        run: npm run quality
+
+  backend-tests:
+    name: Back end unit and integration tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.12'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npm run api:db:generate
+
+      - name: Run back end unit tests
+        run: npm run test -w apps/api -- --runInBand --testRegex='test/unit/.*\.spec\.ts$'
+
+      - name: Run back end integration tests
+        run: npm run test -w apps/api -- --runInBand --testRegex='test/integration/.*\.integration\.spec\.ts$'
+
+  frontend-tests:
+    name: Front end unit and integration tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.12'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run front end unit and integration tests
+        run: npm run test -w apps/web
+
+  frontend-e2e:
+    name: Front end E2E
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.12'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Start front end
+        run: |
+          npm run dev -w apps/web -- --host 127.0.0.1 > vite.log 2>&1 &
+          echo $! > vite.pid
+
+      - name: Wait for front end
+        run: |
+          for i in {1..60}; do
+            if curl -fsS http://127.0.0.1:5173 >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat vite.log
+          exit 1
+
+      - name: Run Cypress E2E
+        run: npm run test:e2e -w apps/web
+
+      - name: Show front end logs on failure
+        if: failure()
+        run: cat vite.log
+
+  frontend-e2e-real:
+    name: Front end E2E with real API
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.12'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Start Docker services
+        run: docker compose up -d --build postgres api web
+
+      - name: Wait for API
+        run: |
+          for i in {1..90}; do
+            if curl -fsS http://localhost:3000/docs >/dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          docker compose logs api
+          exit 1
+
+      - name: Wait for web
+        run: |
+          for i in {1..60}; do
+            if curl -fsS http://localhost:5173 >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          docker compose logs web
+          exit 1
+
+      - name: Run real API Cypress E2E
+        run: npm run test:e2e:real -w apps/web
+
+      - name: Show Docker logs on failure
+        if: failure()
+        run: docker compose logs
+
+      - name: Tear down Docker services
+        if: always()
+        run: docker compose down -v

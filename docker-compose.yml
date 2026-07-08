@@ -17,5 +17,43 @@ services:
       timeout: 5s
       retries: 5
 
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: datashare-api
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://datashare:datashare@postgres:5432/datashare?schema=public
+      JWT_SECRET: change-me-in-development
+      JWT_EXPIRES_IN: 1d
+      API_PORT: 3000
+      API_CORS_ORIGIN: http://localhost:5173
+      STORAGE_DRIVER: local
+      DEFAULT_SHARE_LINK_TTL_DAYS: 7
+    ports:
+      - "3000:3000"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/docs"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        VITE_API_BASE_URL: http://localhost:3000
+    container_name: datashare-web
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "5173:80"
+
 volumes:
   postgres-data:

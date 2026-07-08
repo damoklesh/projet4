@@ -12,6 +12,7 @@
     "test": "vitest run --config vitest.config.mjs",
     "test:coverage": "vitest run --config vitest.config.mjs --coverage",
     "test:e2e": "cypress run",
+    "test:e2e:real": "cypress run --config \"specPattern=cypress/e2e-real/**/*.cy.ts\"",
     "test:e2e:report": "cypress run"
   },
   "dependencies": {
