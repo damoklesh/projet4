@@ -73,3 +73,59 @@ describe('US03 account creation', () => {
     cy.contains(/compte existe déjà/i).should('be.visible');
   });
 });
+
+describe('US04 user login', () => {
+  it('logs in and accesses /me/file-assets with a Bearer token', () => {
+    cy.intercept('POST', '**/auth/login', {
+      statusCode: 201,
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: {
+        status: 'success',
+        message: 'Connexion réussie.',
+        data: {
+          accessToken: 'jwt-token',
+          tokenType: 'Bearer',
+          expiresIn: 3600,
+          user: {
+            id: 'user-id',
+            email: 'user@example.com',
+            avatar: null,
+          },
+        },
+      },
+    }).as('login');
+    cy.intercept('GET', '**/me/file-assets*', (request) => {
+      expect(request.headers.authorization).to.equal('Bearer jwt-token');
+      request.reply({
+        statusCode: 200,
+        headers: {
+          'content-type': 'application/json',
+        },
+        body: {
+          status: 'success',
+          message: 'OK',
+          data: {
+            items: [],
+            total: 0,
+            page: 1,
+            pageSize: 20,
+          },
+        },
+      });
+    }).as('history');
+
+    cy.visit('/login');
+    cy.get('input[name="email"]').type('user@example.com');
+    cy.get('input[name="password"]').type('Password123');
+    cy.get('button[type="submit"]').click();
+
+    cy.wait('@login');
+    cy.location('pathname').should('eq', '/history');
+    cy.wait('@history');
+    cy.window().then((window) => {
+      expect(window.localStorage.getItem('datashare.auth')).to.contain('jwt-token');
+    });
+  });
+});

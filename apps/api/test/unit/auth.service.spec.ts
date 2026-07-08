@@ -1,4 +1,4 @@
-import { ConflictException } from '@nestjs/common';
+import { ConflictException, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import bcrypt from 'bcryptjs';
 import { AuthService } from '../../src/auth/auth.service';
@@ -83,5 +83,80 @@ describe('AuthService.register', () => {
     });
     expect(JSON.stringify(response)).not.toContain('password');
     expect(JSON.stringify(response)).not.toContain('passwordHash');
+  });
+});
+
+describe('AuthService.login', () => {
+  const usersService = {
+    findByEmail: jest.fn(),
+    createUser: jest.fn(),
+  } as unknown as jest.Mocked<Pick<UsersService, 'findByEmail' | 'createUser'>>;
+  const jwtService = {
+    sign: jest.fn(),
+  } as unknown as jest.Mocked<Pick<JwtService, 'sign'>>;
+
+  let service: AuthService;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    service = new AuthService(usersService as unknown as UsersService, jwtService as unknown as JwtService);
+  });
+
+  it('validates credentials and returns a bearer JWT with public user data', async () => {
+    const passwordHash = await bcrypt.hash('Password123', 12);
+    usersService.findByEmail.mockResolvedValue({
+      id: 'user-id',
+      email: 'user@example.com',
+      passwordHash,
+      avatar: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    jwtService.sign.mockReturnValue('jwt-token');
+
+    const response = await service.login({ email: 'user@example.com', password: 'Password123' });
+
+    expect(response).toEqual({
+      accessToken: 'jwt-token',
+      tokenType: 'Bearer',
+      expiresIn: 3600,
+      user: {
+        id: 'user-id',
+        email: 'user@example.com',
+        avatar: null,
+      },
+    });
+    expect(jwtService.sign).toHaveBeenCalledWith({
+      sub: 'user-id',
+      email: 'user@example.com',
+    });
+    expect(JSON.stringify(response)).not.toContain('password');
+    expect(JSON.stringify(response)).not.toContain('passwordHash');
+  });
+
+  it('returns the same generic authentication error for an unknown email', async () => {
+    usersService.findByEmail.mockResolvedValue(null);
+
+    await expect(service.login({ email: 'missing@example.com', password: 'Password123' })).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
+    expect(jwtService.sign).not.toHaveBeenCalled();
+  });
+
+  it('returns the same generic authentication error for a wrong password', async () => {
+    const passwordHash = await bcrypt.hash('Password123', 12);
+    usersService.findByEmail.mockResolvedValue({
+      id: 'user-id',
+      email: 'user@example.com',
+      passwordHash,
+      avatar: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    await expect(service.login({ email: 'user@example.com', password: 'WrongPassword123' })).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
+    expect(jwtService.sign).not.toHaveBeenCalled();
   });
 });

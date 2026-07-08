@@ -65,8 +65,6 @@ export class ShareLinksService {
       }
     }
 
-    await this.shareLinksRepository.incrementDownloadCount(shareLink.id);
-
     return {
       stream: this.storageService.createReadStream(shareLink.fileAsset.storagePath),
       fileName: shareLink.fileAsset.originalName,

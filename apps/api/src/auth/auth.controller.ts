@@ -21,7 +21,11 @@ export class AuthController {
   }
 
   @Post('login')
-  login(@Body() dto: LoginRequestDto): Promise<AuthResponseDto> {
-    return this.authService.login(dto);
+  async login(@Body() dto: LoginRequestDto): Promise<ApiResponse<AuthResponseDto>> {
+    return {
+      status: 'success',
+      message: 'Connexion réussie.',
+      data: await this.authService.login(dto),
+    };
   }
 }

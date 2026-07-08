@@ -69,4 +69,49 @@ describe('auth.store', () => {
       error: 'Un compte existe déjà pour cet email.',
     });
   });
+
+  it('stores the returned JWT and public user after login succeeds', async () => {
+    vi.mocked(authApi.login).mockResolvedValue({
+      accessToken: 'jwt-token',
+      tokenType: 'Bearer',
+      expiresIn: 3600,
+      user: {
+        id: 'user-id',
+        email: 'user@example.com',
+        avatar: null,
+      },
+    } as Awaited<ReturnType<typeof authApi.login>>);
+
+    await useAuthStore.getState().login({
+      email: 'user@example.com',
+      password: 'Password123',
+    });
+
+    expect(useAuthStore.getState()).toMatchObject({
+      accessToken: 'jwt-token',
+      isAuthenticated: true,
+      user: {
+        id: 'user-id',
+        email: 'user@example.com',
+        avatar: null,
+      },
+    });
+    expect(localStorage.getItem('datashare.auth')).toContain('jwt-token');
+  });
+
+  it('exposes generic login errors from the API', async () => {
+    vi.mocked(authApi.login).mockRejectedValue(new Error('Invalid email or password.'));
+
+    await expect(
+      useAuthStore.getState().login({
+        email: 'user@example.com',
+        password: 'WrongPassword123',
+      }),
+    ).rejects.toThrow('Invalid email or password.');
+
+    expect(useAuthStore.getState()).toMatchObject({
+      isAuthenticated: false,
+      error: 'Invalid email or password.',
+    });
+  });
 });

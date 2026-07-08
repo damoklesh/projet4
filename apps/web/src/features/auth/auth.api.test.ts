@@ -35,4 +35,30 @@ describe('auth.api', () => {
       }),
     });
   });
+
+  it('submits login credentials to POST /auth/login', async () => {
+    vi.mocked(httpClient).mockResolvedValue({
+      accessToken: 'jwt-token',
+      tokenType: 'Bearer',
+      expiresIn: 3600,
+      user: {
+        id: 'user-id',
+        email: 'user@example.com',
+        avatar: null,
+      },
+    });
+
+    await authApi.login({
+      email: 'user@example.com',
+      password: 'Password123',
+    });
+
+    expect(httpClient).toHaveBeenCalledWith('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({
+        email: 'user@example.com',
+        password: 'Password123',
+      }),
+    });
+  });
 });
