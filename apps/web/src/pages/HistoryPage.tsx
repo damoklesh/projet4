@@ -1,15 +1,16 @@
-import { RefreshCw } from 'lucide-react';
+import { ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { FileHistoryTable } from '../components/file/FileHistoryTable';
 import { Button } from '../components/ui/Button';
 import { Callout } from '../components/ui/Callout';
+import { Input } from '../components/ui/Input';
 import { Select } from '../components/ui/Select';
 import { useFileAssetsStore } from '../features/file-assets/file-assets.store';
 import type { FileAssetSort, SortOrder } from '../features/file-assets/file-assets.types';
 import type { FileStatusFilter } from '@datashare/shared';
 
 export function HistoryPage() {
-  const { deleteFile, error, history, isLoading, loadHistory, page, pageSize, total } = useFileAssetsStore(
+  const { deleteFile, error, history, isLoading, loadHistory, page, pageSize, totalItems, totalPages } = useFileAssetsStore(
     (state) => ({
       deleteFile: state.deleteFile,
       error: state.error,
@@ -18,42 +19,94 @@ export function HistoryPage() {
       loadHistory: state.loadHistory,
       page: state.page,
       pageSize: state.pageSize,
-      total: state.total,
+      totalItems: state.totalItems,
+      totalPages: state.totalPages,
     }),
   );
-  const [status, setStatus] = useState<FileStatusFilter>('all');
+  const [status, setStatus] = useState<FileStatusFilter>('active');
+  const [tag, setTag] = useState('');
   const [sort, setSort] = useState<FileAssetSort>('uploadedAt');
   const [order, setOrder] = useState<SortOrder>('desc');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [currentPageSize, setCurrentPageSize] = useState(10);
+  const [copyMessage, setCopyMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    void loadHistory({ status, sort, order });
-  }, [loadHistory, order, sort, status]);
+    void loadHistory({
+      page: currentPage,
+      pageSize: currentPageSize,
+      status,
+      tag: tag.trim() || undefined,
+      sort,
+      order,
+    });
+  }, [currentPage, currentPageSize, loadHistory, order, sort, status, tag]);
+
+  function resetToFirstPage() {
+    setCurrentPage(1);
+  }
+
+  async function handleCopyShareLink(url: string) {
+    await navigator.clipboard.writeText(url);
+    setCopyMessage('Share link copied.');
+  }
 
   return (
     <section className="workspace">
       <div className="workspace__header">
         <h1>History</h1>
-        <Button icon={<RefreshCw size={16} />} onClick={() => void loadHistory({ status, sort, order })} variant="secondary">
+        <Button
+          icon={<RefreshCw size={16} />}
+          onClick={() =>
+            void loadHistory({
+              page: currentPage,
+              pageSize: currentPageSize,
+              status,
+              tag: tag.trim() || undefined,
+              sort,
+              order,
+            })
+          }
+          variant="secondary"
+        >
           Refresh
         </Button>
       </div>
       {error ? <Callout tone="danger">{error}</Callout> : null}
+      {copyMessage ? <Callout tone="success">{copyMessage}</Callout> : null}
       <div className="toolbar">
         <Select
           label="Status"
           name="status"
-          onChange={(event) => setStatus(event.target.value as FileStatusFilter)}
+          onChange={(event) => {
+            setStatus(event.target.value as FileStatusFilter);
+            resetToFirstPage();
+          }}
           options={[
-            { label: 'All', value: 'all' },
             { label: 'Active', value: 'active' },
             { label: 'Expired', value: 'expired' },
+            { label: 'All', value: 'all' },
           ]}
           value={status}
+        />
+        <Input
+          label="Tag"
+          maxLength={30}
+          name="tag"
+          onChange={(event) => {
+            setTag(event.target.value);
+            resetToFirstPage();
+          }}
+          placeholder="facture"
+          value={tag}
         />
         <Select
           label="Sort"
           name="sort"
-          onChange={(event) => setSort(event.target.value as FileAssetSort)}
+          onChange={(event) => {
+            setSort(event.target.value as FileAssetSort);
+            resetToFirstPage();
+          }}
           options={[
             { label: 'Uploaded', value: 'uploadedAt' },
             { label: 'Expires', value: 'expiresAt' },
@@ -65,18 +118,62 @@ export function HistoryPage() {
         <Select
           label="Order"
           name="order"
-          onChange={(event) => setOrder(event.target.value as SortOrder)}
+          onChange={(event) => {
+            setOrder(event.target.value as SortOrder);
+            resetToFirstPage();
+          }}
           options={[
             { label: 'Descending', value: 'desc' },
             { label: 'Ascending', value: 'asc' },
           ]}
           value={order}
         />
+        <Select
+          label="Page size"
+          name="pageSize"
+          onChange={(event) => {
+            setCurrentPageSize(Number(event.target.value));
+            resetToFirstPage();
+          }}
+          options={[
+            { label: '10', value: '10' },
+            { label: '25', value: '25' },
+            { label: '50', value: '50' },
+            { label: '100', value: '100' },
+          ]}
+          value={String(currentPageSize)}
+        />
       </div>
-      <FileHistoryTable items={history} onDelete={(fileAssetId) => void deleteFile(fileAssetId)} />
-      <p className="muted">
-        {isLoading ? 'Loading...' : `${total} files, page ${page}, ${pageSize} per page`}
-      </p>
+      <FileHistoryTable
+        items={history}
+        onCopyShareLink={(url) => void handleCopyShareLink(url)}
+        onDelete={(fileAssetId) => void deleteFile(fileAssetId)}
+      />
+      <div className="pagination-bar">
+        <p className="muted">
+          {isLoading
+            ? 'Loading...'
+            : `${totalItems} files, page ${page} of ${Math.max(totalPages, 1)}, ${pageSize} per page`}
+        </p>
+        <div className="pagination-actions">
+          <Button
+            disabled={currentPage <= 1 || isLoading}
+            icon={<ChevronLeft size={16} />}
+            onClick={() => setCurrentPage((value) => Math.max(1, value - 1))}
+            variant="secondary"
+          >
+            Previous
+          </Button>
+          <Button
+            disabled={currentPage >= totalPages || totalPages === 0 || isLoading}
+            icon={<ChevronRight size={16} />}
+            onClick={() => setCurrentPage((value) => value + 1)}
+            variant="secondary"
+          >
+            Next
+          </Button>
+        </div>
+      </div>
     </section>
   );
 }

@@ -11,7 +11,7 @@ export function FileItem({ item, onDelete }: FileItemProps) {
   return (
     <li className="file-item">
       <div>
-        <strong>{item.originalName}</strong>
+        <strong>{item.fileName}</strong>
         <span>{item.status}</span>
       </div>
       <Button icon={<Trash2 size={16} />} onClick={() => onDelete(item.id)} variant="danger">

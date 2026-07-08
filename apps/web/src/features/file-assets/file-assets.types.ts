@@ -41,14 +41,15 @@ export interface FileAssetResponse {
 
 export interface FileAssetHistoryItem {
   id: string;
-  originalName: string;
+  fileName: string;
   mimeType: string;
   size: number;
   uploadedAt: string;
   expiresAt: string;
   status: FileStatus;
-  downloadCount: number;
-  tags: string[];
+  isPasswordProtected: boolean;
+  tags: UploadedFileTag[];
+  shareLink: UploadedShareLink;
 }
 
 export interface FileAssetHistoryQuery {

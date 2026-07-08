@@ -86,12 +86,11 @@ export class FileAssetsRepository {
     const now = new Date();
     const where: Prisma.FileAssetWhereInput = {
       ownerId,
+      deletedAt: null,
       ...(query.status === 'active' && {
-        deletedAt: null,
         shareLink: { expiresAt: { gt: now } },
       }),
       ...(query.status === 'expired' && {
-        deletedAt: null,
         shareLink: { expiresAt: { lte: now } },
       }),
       ...(query.tag && {

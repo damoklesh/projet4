@@ -1,12 +1,13 @@
 import { ApiProperty } from '@nestjs/swagger';
 import type { FileStatus } from '@datashare/shared';
+import { UploadedFileTagResponseDto, UploadedShareLinkResponseDto } from './file-asset.response';
 
 export class FileAssetHistoryItemResponseDto {
   @ApiProperty()
   id: string;
 
   @ApiProperty()
-  originalName: string;
+  fileName: string;
 
   @ApiProperty()
   mimeType: string;
@@ -24,8 +25,33 @@ export class FileAssetHistoryItemResponseDto {
   status: FileStatus;
 
   @ApiProperty()
-  downloadCount: number;
+  isPasswordProtected: boolean;
 
-  @ApiProperty({ type: [String] })
-  tags: string[];
+  @ApiProperty({ type: [UploadedFileTagResponseDto] })
+  tags: UploadedFileTagResponseDto[];
+
+  @ApiProperty({ type: UploadedShareLinkResponseDto })
+  shareLink: UploadedShareLinkResponseDto;
+}
+
+export class FileAssetHistoryPaginationResponseDto {
+  @ApiProperty()
+  page: number;
+
+  @ApiProperty()
+  pageSize: number;
+
+  @ApiProperty()
+  totalItems: number;
+
+  @ApiProperty()
+  totalPages: number;
+}
+
+export class FileAssetHistoryResponseDto {
+  @ApiProperty({ type: [FileAssetHistoryItemResponseDto] })
+  items: FileAssetHistoryItemResponseDto[];
+
+  @ApiProperty({ type: FileAssetHistoryPaginationResponseDto })
+  pagination: FileAssetHistoryPaginationResponseDto;
 }

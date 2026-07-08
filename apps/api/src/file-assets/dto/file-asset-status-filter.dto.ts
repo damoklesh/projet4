@@ -1,6 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsIn, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
+import { IsIn, IsInt, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
 import type { FileStatusFilter } from '@datashare/shared';
 
 export type FileAssetSort = 'uploadedAt' | 'expiresAt' | 'fileName' | 'size';
@@ -14,22 +14,23 @@ export class FileAssetHistoryQueryDto {
   @Min(1)
   page = 1;
 
-  @ApiPropertyOptional({ minimum: 1, maximum: 100, default: 20 })
+  @ApiPropertyOptional({ minimum: 1, maximum: 100, default: 10 })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)
   @Max(100)
-  pageSize = 20;
+  pageSize = 10;
 
-  @ApiPropertyOptional({ enum: ['active', 'expired', 'all'], default: 'all' })
+  @ApiPropertyOptional({ enum: ['active', 'expired', 'all'], default: 'active' })
   @IsOptional()
   @IsIn(['active', 'expired', 'all'])
-  status: FileStatusFilter = 'all';
+  status: FileStatusFilter = 'active';
 
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
+  @MaxLength(30)
   tag?: string;
 
   @ApiPropertyOptional({ enum: ['uploadedAt', 'expiresAt', 'fileName', 'size'], default: 'uploadedAt' })

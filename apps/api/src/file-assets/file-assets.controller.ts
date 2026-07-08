@@ -17,7 +17,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { ApiResponse } from '../common/types/api-response.type';
 import type { AuthenticatedUser } from '../common/types/authenticated-user.type';
-import { FileAssetHistoryItemResponseDto } from './dto/file-asset-history-item.response';
+import { FileAssetHistoryResponseDto } from './dto/file-asset-history-item.response';
 import { FileAssetResponseDto } from './dto/file-asset.response';
 import { FileAssetHistoryQueryDto } from './dto/file-asset-status-filter.dto';
 import { UploadFileRequestDto } from './dto/upload-file.request';
@@ -73,11 +73,15 @@ export class FileAssetsController {
   @Get('me/file-assets')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  history(
+  async history(
     @CurrentUser() user: AuthenticatedUser,
     @Query() query: FileAssetHistoryQueryDto,
-  ): Promise<{ items: FileAssetHistoryItemResponseDto[]; total: number; page: number; pageSize: number }> {
-    return this.fileAssetsService.getHistory(user.id, query);
+  ): Promise<ApiResponse<FileAssetHistoryResponseDto>> {
+    return {
+      status: 'success',
+      message: 'Historique des fichiers rÃ©cupÃ©rÃ© avec succÃ¨s.',
+      data: await this.fileAssetsService.getHistory(user.id, query),
+    };
   }
 
   @Delete('file-assets/:fileAssetId')

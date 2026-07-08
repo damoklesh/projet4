@@ -13,7 +13,7 @@ import { createReadStream, promises as fsPromises } from 'node:fs';
 import { extname } from 'node:path';
 import { ExpirationService } from '../expiration/expiration.service';
 import { StorageService } from '../storage/storage.service';
-import { FileAssetHistoryItemResponseDto } from './dto/file-asset-history-item.response';
+import { FileAssetHistoryResponseDto } from './dto/file-asset-history-item.response';
 import { FileAssetResponseDto } from './dto/file-asset.response';
 import { FileAssetHistoryQueryDto } from './dto/file-asset-status-filter.dto';
 import { UploadFileRequestDto } from './dto/upload-file.request';
@@ -108,30 +108,45 @@ export class FileAssetsService {
   async getHistory(
     ownerId: string,
     query: FileAssetHistoryQueryDto,
-  ): Promise<{ items: FileAssetHistoryItemResponseDto[]; total: number; page: number; pageSize: number }> {
+  ): Promise<FileAssetHistoryResponseDto> {
     const result = await this.fileAssetsRepository.listForOwner(ownerId, query);
 
     return {
       items: result.items.map((asset) => {
         const shareLink = asset.shareLink;
+        const expiresAt = shareLink?.expiresAt ?? asset.uploadedAt;
+        const isPasswordProtected = Boolean(shareLink?.passwordHash);
+
         return {
           id: asset.id,
-          originalName: asset.originalName,
+          fileName: asset.originalName,
           mimeType: asset.mimeType,
           size: Number(asset.size),
           uploadedAt: asset.uploadedAt,
-          expiresAt: shareLink?.expiresAt ?? asset.uploadedAt,
+          expiresAt,
           status: this.expirationService.getFunctionalStatus({
             deletedAt: asset.deletedAt,
-            expiresAt: shareLink?.expiresAt ?? asset.uploadedAt,
+            expiresAt,
           }),
-          downloadCount: shareLink?.downloadCount ?? 0,
-          tags: asset.fileTags.map((fileTag) => fileTag.tag.name),
+          isPasswordProtected,
+          tags: asset.fileTags.map((fileTag) => ({
+            id: fileTag.tag.id,
+            name: fileTag.tag.name,
+          })),
+          shareLink: {
+            url: this.createShareUrl(shareLink?.token ?? ''),
+            token: shareLink?.token ?? '',
+            expiresAt,
+            isPasswordProtected,
+          },
         };
       }),
-      total: result.total,
-      page: query.page,
-      pageSize: query.pageSize,
+      pagination: {
+        page: query.page,
+        pageSize: query.pageSize,
+        totalItems: result.total,
+        totalPages: Math.ceil(result.total / query.pageSize),
+      },
     };
   }
 

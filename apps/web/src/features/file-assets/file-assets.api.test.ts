@@ -50,4 +50,29 @@ describe('fileAssetsApi', () => {
     expect(formData.get('tags')).toBe('facture');
     expect(formData.get('expiresInDays')).toBeNull();
   });
+
+  it('serializes history pagination, filters and sorting query parameters', async () => {
+    vi.mocked(httpClient).mockResolvedValue({
+      items: [],
+      pagination: {
+        page: 2,
+        pageSize: 10,
+        totalItems: 0,
+        totalPages: 0,
+      },
+    });
+
+    await fileAssetsApi.history({
+      page: 2,
+      pageSize: 10,
+      status: 'expired',
+      tag: 'facture',
+      sort: 'uploadedAt',
+      order: 'desc',
+    });
+
+    expect(httpClient).toHaveBeenCalledWith(
+      '/me/file-assets?page=2&pageSize=10&status=expired&tag=facture&sort=uploadedAt&order=desc',
+    );
+  });
 });

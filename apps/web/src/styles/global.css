@@ -122,7 +122,7 @@ h2 {
   align-items: end;
   display: grid;
   gap: 16px;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   margin-bottom: 18px;
 }
 
@@ -252,7 +252,7 @@ h2 {
 
 .history-table {
   border-collapse: collapse;
-  min-width: 760px;
+  min-width: 980px;
   width: 100%;
 }
 
@@ -261,6 +261,21 @@ h2 {
   border-bottom: 1px solid var(--color-border);
   padding: 12px;
   text-align: left;
+}
+
+.table-actions,
+.pagination-actions {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+}
+
+.pagination-bar {
+  align-items: center;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  margin-top: 16px;
 }
 
 .metadata-list {
@@ -346,5 +361,12 @@ h2 {
 
   .copy-row {
     grid-template-columns: 1fr;
+  }
+
+  .pagination-bar,
+  .pagination-actions,
+  .table-actions {
+    align-items: stretch;
+    flex-direction: column;
   }
 }

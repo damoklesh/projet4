@@ -3,9 +3,14 @@ export interface PaginationQuery {
   pageSize: number;
 }
 
-export interface PaginatedResult<TItem> {
-  items: TItem[];
-  total: number;
+export interface PaginationMeta {
   page: number;
   pageSize: number;
+  totalItems: number;
+  totalPages: number;
+}
+
+export interface PaginatedResult<TItem> {
+  items: TItem[];
+  pagination: PaginationMeta;
 }

@@ -9,7 +9,8 @@ import type {
 
 interface FileAssetsState {
   history: FileAssetHistoryItem[];
-  total: number;
+  totalItems: number;
+  totalPages: number;
   page: number;
   pageSize: number;
   lastUpload: FileAssetResponse | null;
@@ -23,9 +24,10 @@ interface FileAssetsState {
 
 export const useFileAssetsStore = create<FileAssetsState>((set) => ({
   history: [],
-  total: 0,
+  totalItems: 0,
+  totalPages: 0,
   page: 1,
-  pageSize: 20,
+  pageSize: 10,
   lastUpload: null,
   isLoading: false,
   error: null,
@@ -50,9 +52,10 @@ export const useFileAssetsStore = create<FileAssetsState>((set) => ({
       const result = await fileAssetsApi.history(query);
       set({
         history: result.items,
-        total: result.total,
-        page: result.page,
-        pageSize: result.pageSize,
+        totalItems: result.pagination.totalItems,
+        totalPages: result.pagination.totalPages,
+        page: result.pagination.page,
+        pageSize: result.pagination.pageSize,
         isLoading: false,
       });
     } catch (error) {
@@ -65,7 +68,7 @@ export const useFileAssetsStore = create<FileAssetsState>((set) => ({
     await fileAssetsApi.delete(fileAssetId);
     set((state) => ({
       history: state.history.filter((item) => item.id !== fileAssetId),
-      total: Math.max(0, state.total - 1),
+      totalItems: Math.max(0, state.totalItems - 1),
     }));
   },
 
