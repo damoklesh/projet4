@@ -1,6 +1,1074 @@
-openapi: 3.0.3
+openapi: 3.1.0
+
 info:
   title: DataShare API
-  version: 0.1.0
-  description: Initial OpenAPI placeholder. The NestJS Swagger setup exposes live docs at /docs.
-paths: {}
+  version: 1.0.0
+  description: |
+    API REST DataShare pour le téléversement, le partage temporaire et le téléchargement de fichiers.
+
+    Les échanges de données applicatives utilisent le format JSON conformément à la RFC 8259.
+    Les erreurs HTTP utilisent le format standardisé application/problem+json conformément à la RFC 9457.
+
+    Les réponses JSON applicatives suivent une enveloppe commune :
+    { status, message, data }.
+
+    L'endpoint de téléchargement retourne un flux binaire application/octet-stream et ne suit donc pas
+    cette enveloppe pour les réponses de succès.
+
+servers:
+  - url: http://localhost:3000/api
+    description: Local development server
+
+tags:
+  - name: Auth
+    description: Authentification et création de compte
+  - name: FileAssets
+    description: Gestion des fichiers téléversés
+  - name: Me
+    description: Ressources liées à l'utilisateur connecté
+  - name: ShareLinks
+    description: Liens publics temporaires de téléchargement
+
+paths:
+  /auth/register:
+    post:
+      tags:
+        - Auth
+      summary: Créer un compte utilisateur
+      operationId: registerUser
+      description: |
+        Crée un compte utilisateur avec une adresse email unique et un mot de passe.
+        Le mot de passe est stocké côté serveur sous forme hashée.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+            examples:
+              default:
+                value:
+                  email: "user@example.com"
+                  password: "Password123"
+      responses:
+        "201":
+          description: Compte créé avec succès
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthApiResponse"
+              example:
+                status: "success"
+                message: "Compte créé avec succès."
+                data:
+                  accessToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                  tokenType: "Bearer"
+                  expiresIn: 3600
+                  user:
+                    id: 1
+                    email: "user@example.com"
+                    avatar: null
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /auth/login:
+    post:
+      tags:
+        - Auth
+      summary: Connecter un utilisateur
+      operationId: loginUser
+      description: |
+        Authentifie un utilisateur avec son email et son mot de passe.
+        Retourne un token JWT utilisable avec le header Authorization: Bearer.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+            examples:
+              default:
+                value:
+                  email: "user@example.com"
+                  password: "Password123"
+      responses:
+        "200":
+          description: Connexion réussie
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthApiResponse"
+              example:
+                status: "success"
+                message: "Connexion réussie."
+                data:
+                  accessToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                  tokenType: "Bearer"
+                  expiresIn: 3600
+                  user:
+                    id: 1
+                    email: "user@example.com"
+                    avatar: null
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /file-assets:
+    post:
+      tags:
+        - FileAssets
+      summary: Téléverser un fichier
+      operationId: uploadFileAsset
+      description: |
+        Téléverse un fichier en multipart/form-data.
+
+        L'implémentation backend doit traiter le fichier en streaming afin d'éviter
+        de charger l'intégralité du fichier en mémoire.
+
+        Si un JWT est fourni, le fichier est rattaché à l'utilisateur connecté.
+        Sans JWT, le fichier est considéré comme anonyme et ne sera pas visible dans l'historique utilisateur.
+      security:
+        - bearerAuth: []
+        - {}
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/FileAssetUploadRequest"
+            encoding:
+              file:
+                contentType: application/octet-stream
+      responses:
+        "201":
+          description: Fichier téléversé et lien de partage créé
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FileAssetCreatedApiResponse"
+              example:
+                status: "success"
+                message: "Fichier téléversé avec succès."
+                data:
+                  fileAsset:
+                    id: 42
+                    fileName: "document.pdf"
+                    mimeType: "application/pdf"
+                    size: 245760
+                    uploadedAt: "2026-07-08T10:30:00Z"
+                    expiresAt: "2026-07-15T10:30:00Z"
+                    status: "active"
+                    isPasswordProtected: true
+                    tags:
+                      - id: 5
+                        name: "facture"
+                  shareLink:
+                    url: "http://localhost:5173/share/f6c2d8e7a4b943b09a02d5f1"
+                    token: "f6c2d8e7a4b943b09a02d5f1"
+                    expiresAt: "2026-07-15T10:30:00Z"
+                    isPasswordProtected: true
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
+
+  /me/file-assets:
+    get:
+      tags:
+        - Me
+      summary: Consulter l'historique des fichiers de l'utilisateur connecté
+      operationId: listMyFileAssets
+      description: |
+        Retourne une liste paginée des fichiers téléversés par l'utilisateur connecté.
+        L'utilisateur est identifié à partir du JWT, aucun userId n'est transmis dans l'URL.
+
+        Le statut retourné est un statut fonctionnel calculé côté serveur.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          required: false
+          description: Filtre fonctionnel appliqué à l'historique des fichiers.
+          schema:
+            $ref: "#/components/schemas/FileAssetStatusFilter"
+        - name: tag
+          in: query
+          required: false
+          description: Filtre les fichiers par nom de tag.
+          schema:
+            type: string
+            maxLength: 30
+            example: "facture"
+        - name: page
+          in: query
+          required: false
+          description: Numéro de page à retourner.
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+            example: 1
+        - name: pageSize
+          in: query
+          required: false
+          description: Nombre d'éléments par page.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+            example: 10
+        - name: sort
+          in: query
+          required: false
+          description: Champ utilisé pour trier les résultats.
+          schema:
+            $ref: "#/components/schemas/FileAssetSortField"
+        - name: order
+          in: query
+          required: false
+          description: Sens du tri.
+          schema:
+            $ref: "#/components/schemas/SortOrder"
+      responses:
+        "200":
+          description: Liste paginée des fichiers de l'utilisateur connecté
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FileAssetListApiResponse"
+              example:
+                status: "success"
+                message: "Historique des fichiers récupéré avec succès."
+                data:
+                  items:
+                    - id: 42
+                      fileName: "document.pdf"
+                      mimeType: "application/pdf"
+                      size: 245760
+                      uploadedAt: "2026-07-08T10:30:00Z"
+                      expiresAt: "2026-07-15T10:30:00Z"
+                      status: "active"
+                      isPasswordProtected: true
+                      tags:
+                        - id: 5
+                          name: "facture"
+                      shareLink:
+                        url: "http://localhost:5173/share/f6c2d8e7a4b943b09a02d5f1"
+                        token: "f6c2d8e7a4b943b09a02d5f1"
+                        expiresAt: "2026-07-15T10:30:00Z"
+                        isPasswordProtected: true
+                  pagination:
+                    page: 1
+                    pageSize: 10
+                    totalItems: 1
+                    totalPages: 1
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /file-assets/{fileAssetId}:
+    delete:
+      tags:
+        - FileAssets
+      summary: Supprimer un fichier
+      operationId: deleteFileAsset
+      description: |
+        Supprime un fichier appartenant à l'utilisateur connecté.
+
+        La suppression est irréversible du point de vue fonctionnel.
+        Le backend vérifie que le fichier appartient bien à l'utilisateur authentifié.
+        Le fichier physique est supprimé du stockage et le lien de partage associé devient inutilisable.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/FileAssetId"
+      responses:
+        "200":
+          description: Fichier supprimé avec succès
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteFileAssetApiResponse"
+              example:
+                status: "success"
+                message: "Fichier supprimé avec succès."
+                data:
+                  id: 42
+                  status: "deleted"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /share-links/{token}:
+    get:
+      tags:
+        - ShareLinks
+      summary: Consulter les métadonnées d'un lien de partage
+      operationId: getShareLinkMetadata
+      description: |
+        Retourne les métadonnées publiques du fichier associé au token.
+
+        Aucun téléchargement n'est déclenché par cet endpoint.
+        Si le fichier est protégé par mot de passe, l'information est retournée via isPasswordProtected.
+      parameters:
+        - $ref: "#/components/parameters/ShareLinkToken"
+      responses:
+        "200":
+          description: Métadonnées publiques du fichier partagé
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShareLinkMetadataApiResponse"
+              example:
+                status: "success"
+                message: "Métadonnées du lien récupérées avec succès."
+                data:
+                  token: "f6c2d8e7a4b943b09a02d5f1"
+                  fileName: "document.pdf"
+                  mimeType: "application/pdf"
+                  size: 245760
+                  expiresAt: "2026-07-15T10:30:00Z"
+                  status: "active"
+                  isPasswordProtected: true
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "410":
+          $ref: "#/components/responses/Gone"
+
+  /share-links/{token}/download:
+    post:
+      tags:
+        - ShareLinks
+      summary: Télécharger un fichier partagé
+      operationId: downloadSharedFile
+      description: |
+        Télécharge le fichier associé au token.
+
+        Cet endpoint retourne un flux binaire et ne peut donc pas utiliser l'enveloppe JSON
+        standard { status, message, data } pour les réponses de succès.
+
+        Si le fichier est protégé par mot de passe, le champ password doit être transmis
+        dans le payload JSON. Le mot de passe ne doit jamais être transmis dans l'URL.
+      parameters:
+        - $ref: "#/components/parameters/ShareLinkToken"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DownloadRequest"
+            examples:
+              withoutPassword:
+                value: {}
+              withPassword:
+                value:
+                  password: "secret123"
+      responses:
+        "200":
+          description: Flux binaire du fichier
+          headers:
+            Content-Disposition:
+              description: Nom du fichier proposé au téléchargement.
+              schema:
+                type: string
+                example: 'attachment; filename="document.pdf"'
+            Content-Length:
+              description: Taille du fichier en octets, si connue.
+              schema:
+                type: integer
+                format: int64
+                example: 245760
+            Content-Type:
+              description: Type MIME du fichier.
+              schema:
+                type: string
+                example: "application/pdf"
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          description: Mot de passe requis ou invalide
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+              example:
+                type: "https://datashare.local/problems/password-required"
+                title: "Password required"
+                status: 401
+                detail: "Un mot de passe valide est requis pour télécharger ce fichier."
+                instance: "/api/share-links/f6c2d8e7a4b943b09a02d5f1/download"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "410":
+          $ref: "#/components/responses/Gone"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    FileAssetId:
+      name: fileAssetId
+      in: path
+      required: true
+      description: Identifiant technique du fichier.
+      schema:
+        type: integer
+        minimum: 1
+        example: 42
+
+    ShareLinkToken:
+      name: token
+      in: path
+      required: true
+      description: Token public non prédictible du lien de partage.
+      schema:
+        type: string
+        minLength: 20
+        maxLength: 128
+        example: "f6c2d8e7a4b943b09a02d5f1"
+
+  responses:
+    BadRequest:
+      description: Requête invalide ou données non conformes
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+          example:
+            type: "https://datashare.local/problems/validation-error"
+            title: "Validation error"
+            status: 400
+            detail: "La requête contient des données invalides."
+            instance: "/api/auth/register"
+            errors:
+              email:
+                - "L'adresse email doit être valide."
+              password:
+                - "Le mot de passe doit contenir au moins 8 caractères."
+
+    Unauthorized:
+      description: Authentification requise ou invalide
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+          example:
+            type: "https://datashare.local/problems/unauthorized"
+            title: "Unauthorized"
+            status: 401
+            detail: "Un token JWT valide est requis."
+
+    Forbidden:
+      description: Accès refusé
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+          example:
+            type: "https://datashare.local/problems/forbidden"
+            title: "Forbidden"
+            status: 403
+            detail: "Vous n'êtes pas autorisé à accéder à cette ressource."
+
+    NotFound:
+      description: Ressource introuvable
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+          example:
+            type: "https://datashare.local/problems/not-found"
+            title: "Not found"
+            status: 404
+            detail: "La ressource demandée est introuvable."
+
+    Gone:
+      description: Ressource expirée ou supprimée
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+          example:
+            type: "https://datashare.local/problems/link-expired"
+            title: "Link expired"
+            status: 410
+            detail: "Le lien de téléchargement a expiré ou le fichier a été supprimé."
+
+    Conflict:
+      description: Conflit avec l'état actuel de la ressource
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+          example:
+            type: "https://datashare.local/problems/email-already-used"
+            title: "Email already used"
+            status: 409
+            detail: "Cette adresse email est déjà utilisée."
+
+    PayloadTooLarge:
+      description: Fichier trop volumineux
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+          example:
+            type: "https://datashare.local/problems/file-too-large"
+            title: "File too large"
+            status: 413
+            detail: "La taille maximale autorisée est de 1 Go."
+
+    UnsupportedMediaType:
+      description: Type de fichier non autorisé
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+          example:
+            type: "https://datashare.local/problems/unsupported-file-type"
+            title: "Unsupported file type"
+            status: 415
+            detail: "Ce type de fichier n'est pas autorisé."
+
+  schemas:
+    ApiStatus:
+      type: string
+      enum:
+        - success
+        - error
+      example: "success"
+
+    ApiResponseBase:
+      type: object
+      required:
+        - status
+        - message
+        - data
+      additionalProperties: false
+      properties:
+        status:
+          $ref: "#/components/schemas/ApiStatus"
+        message:
+          type: string
+          example: "Opération réalisée avec succès."
+        data:
+          description: Payload métier de la réponse.
+
+    AuthApiResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiResponseBase"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/AuthPayload"
+
+    FileAssetCreatedApiResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiResponseBase"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/FileAssetCreatedPayload"
+
+    FileAssetListApiResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiResponseBase"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/FileAssetListPayload"
+
+    ShareLinkMetadataApiResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiResponseBase"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/ShareLinkMetadata"
+
+    DeleteFileAssetApiResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiResponseBase"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/DeleteFileAssetPayload"
+
+    RegisterRequest:
+      type: object
+      required:
+        - email
+        - password
+      additionalProperties: false
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 255
+          example: "user@example.com"
+        password:
+          type: string
+          minLength: 8
+          maxLength: 128
+          format: password
+          example: "Password123"
+
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      additionalProperties: false
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 255
+          example: "user@example.com"
+        password:
+          type: string
+          minLength: 1
+          maxLength: 128
+          format: password
+          example: "Password123"
+
+    AuthPayload:
+      type: object
+      required:
+        - accessToken
+        - tokenType
+        - expiresIn
+        - user
+      additionalProperties: false
+      properties:
+        accessToken:
+          type: string
+          description: Token JWT d'accès.
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        tokenType:
+          type: string
+          const: "Bearer"
+          example: "Bearer"
+        expiresIn:
+          type: integer
+          description: Durée de validité du token en secondes.
+          example: 3600
+        user:
+          $ref: "#/components/schemas/UserPublic"
+
+    UserPublic:
+      type: object
+      required:
+        - id
+        - email
+        - avatar
+      additionalProperties: false
+      properties:
+        id:
+          type: integer
+          example: 1
+        email:
+          type: string
+          format: email
+          example: "user@example.com"
+        avatar:
+          type:
+            - string
+            - "null"
+          format: uri
+          example: null
+
+    FileAssetUploadRequest:
+      type: object
+      required:
+        - file
+      additionalProperties: false
+      properties:
+        file:
+          type: string
+          format: binary
+          description: Fichier à téléverser. Taille maximale 1 Go.
+        password:
+          type:
+            - string
+            - "null"
+          minLength: 6
+          maxLength: 128
+          format: password
+          description: Mot de passe optionnel pour protéger le lien de téléchargement.
+          example: "secret123"
+        expirationDays:
+          type: integer
+          minimum: 1
+          maximum: 7
+          default: 7
+          description: Durée de validité du lien de partage en jours.
+          example: 7
+        tags:
+          type: array
+          description: Tags optionnels associés au fichier.
+          maxItems: 20
+          uniqueItems: true
+          items:
+            type: string
+            minLength: 1
+            maxLength: 30
+          example:
+            - "facture"
+            - "client"
+
+    FileAssetCreatedPayload:
+      type: object
+      required:
+        - fileAsset
+        - shareLink
+      additionalProperties: false
+      properties:
+        fileAsset:
+          $ref: "#/components/schemas/FileAsset"
+        shareLink:
+          $ref: "#/components/schemas/ShareLink"
+
+    FileAssetListPayload:
+      type: object
+      required:
+        - items
+        - pagination
+      additionalProperties: false
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/FileAssetHistoryItem"
+        pagination:
+          $ref: "#/components/schemas/Pagination"
+
+    FileAsset:
+      type: object
+      required:
+        - id
+        - fileName
+        - mimeType
+        - size
+        - uploadedAt
+        - expiresAt
+        - status
+        - isPasswordProtected
+        - tags
+      additionalProperties: false
+      properties:
+        id:
+          type: integer
+          example: 42
+        fileName:
+          type: string
+          example: "document.pdf"
+        mimeType:
+          type: string
+          example: "application/pdf"
+        size:
+          type: integer
+          format: int64
+          description: Taille du fichier en octets.
+          example: 245760
+        uploadedAt:
+          type: string
+          format: date-time
+          example: "2026-07-08T10:30:00Z"
+        expiresAt:
+          type: string
+          format: date-time
+          example: "2026-07-15T10:30:00Z"
+        status:
+          $ref: "#/components/schemas/FileAssetStatus"
+        isPasswordProtected:
+          type: boolean
+          example: true
+        tags:
+          type: array
+          items:
+            $ref: "#/components/schemas/Tag"
+
+    FileAssetHistoryItem:
+      type: object
+      required:
+        - id
+        - fileName
+        - mimeType
+        - size
+        - uploadedAt
+        - expiresAt
+        - status
+        - isPasswordProtected
+        - tags
+        - shareLink
+      additionalProperties: false
+      properties:
+        id:
+          type: integer
+          example: 42
+        fileName:
+          type: string
+          example: "document.pdf"
+        mimeType:
+          type: string
+          example: "application/pdf"
+        size:
+          type: integer
+          format: int64
+          example: 245760
+        uploadedAt:
+          type: string
+          format: date-time
+          example: "2026-07-08T10:30:00Z"
+        expiresAt:
+          type: string
+          format: date-time
+          example: "2026-07-15T10:30:00Z"
+        status:
+          $ref: "#/components/schemas/FileAssetStatus"
+        isPasswordProtected:
+          type: boolean
+          example: true
+        tags:
+          type: array
+          items:
+            $ref: "#/components/schemas/Tag"
+        shareLink:
+          $ref: "#/components/schemas/ShareLink"
+
+    ShareLink:
+      type: object
+      required:
+        - token
+        - url
+        - expiresAt
+        - isPasswordProtected
+      additionalProperties: false
+      properties:
+        token:
+          type: string
+          example: "f6c2d8e7a4b943b09a02d5f1"
+        url:
+          type: string
+          format: uri
+          example: "http://localhost:5173/share/f6c2d8e7a4b943b09a02d5f1"
+        expiresAt:
+          type: string
+          format: date-time
+          example: "2026-07-15T10:30:00Z"
+        isPasswordProtected:
+          type: boolean
+          example: true
+
+    ShareLinkMetadata:
+      type: object
+      required:
+        - token
+        - fileName
+        - mimeType
+        - size
+        - expiresAt
+        - status
+        - isPasswordProtected
+      additionalProperties: false
+      properties:
+        token:
+          type: string
+          example: "f6c2d8e7a4b943b09a02d5f1"
+        fileName:
+          type: string
+          example: "document.pdf"
+        mimeType:
+          type: string
+          example: "application/pdf"
+        size:
+          type: integer
+          format: int64
+          example: 245760
+        expiresAt:
+          type: string
+          format: date-time
+          example: "2026-07-15T10:30:00Z"
+        status:
+          $ref: "#/components/schemas/FileAssetStatus"
+        isPasswordProtected:
+          type: boolean
+          example: true
+
+    DownloadRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        password:
+          type:
+            - string
+            - "null"
+          minLength: 6
+          maxLength: 128
+          format: password
+          description: Mot de passe requis uniquement si le lien est protégé.
+          example: "secret123"
+
+    DeleteFileAssetPayload:
+      type: object
+      required:
+        - id
+        - status
+      additionalProperties: false
+      properties:
+        id:
+          type: integer
+          example: 42
+        status:
+          type: string
+          const: deleted
+          example: "deleted"
+
+    Tag:
+      type: object
+      required:
+        - id
+        - name
+      additionalProperties: false
+      properties:
+        id:
+          type: integer
+          example: 5
+        name:
+          type: string
+          maxLength: 30
+          example: "facture"
+
+    Pagination:
+      type: object
+      required:
+        - page
+        - pageSize
+        - totalItems
+        - totalPages
+      additionalProperties: false
+      properties:
+        page:
+          type: integer
+          minimum: 1
+          example: 1
+        pageSize:
+          type: integer
+          minimum: 1
+          maximum: 100
+          example: 10
+        totalItems:
+          type: integer
+          minimum: 0
+          example: 37
+        totalPages:
+          type: integer
+          minimum: 0
+          example: 4
+
+    FileAssetStatus:
+      type: string
+      description: |
+        Statut fonctionnel du fichier calculé côté serveur.
+
+        active : le fichier est disponible au téléchargement.
+        expired : le lien de partage associé n'est plus valide.
+        deleted : le fichier a été supprimé par son propriétaire.
+      enum:
+        - active
+        - expired
+        - deleted
+      example: "active"
+
+    FileAssetStatusFilter:
+      type: string
+      description: |
+        Filtre fonctionnel appliqué à l'historique des fichiers.
+
+        active : fichiers encore disponibles au téléchargement.
+        expired : fichiers dont le lien de partage a expiré.
+        all : fichiers actifs et expirés.
+      enum:
+        - active
+        - expired
+        - all
+      default: active
+      example: "active"
+
+    FileAssetSortField:
+      type: string
+      enum:
+        - uploadedAt
+        - expiresAt
+        - fileName
+        - size
+      default: uploadedAt
+      example: "uploadedAt"
+
+    SortOrder:
+      type: string
+      enum:
+        - asc
+        - desc
+      default: desc
+      example: "desc"
+
+    Problem:
+      type: object
+      description: |
+        Format standardisé des erreurs HTTP conforme à la RFC 9457.
+
+        Le champ errors est utilisé comme extension pour les erreurs de validation.
+      required:
+        - type
+        - title
+        - status
+      additionalProperties: true
+      properties:
+        type:
+          type: string
+          format: uri
+          example: "https://datashare.local/problems/validation-error"
+        title:
+          type: string
+          example: "Validation error"
+        status:
+          type: integer
+          example: 400
+        detail:
+          type: string
+          example: "La requête contient des données invalides."
+        instance:
+          type: string
+          example: "/api/auth/register"
+        errors:
+          type: object
+          description: Extension RFC 9457 contenant les erreurs de validation par champ.
+          additionalProperties:
+            type: array
+            items:
+              type: string
+          example:
+            email:
+              - "L'adresse email doit être valide."
+            password:
+              - "Le mot de passe doit contenir au moins 8 caractères."

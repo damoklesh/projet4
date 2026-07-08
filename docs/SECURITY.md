@@ -1,195 +1,190 @@
-# SECURITY.md — DataShare
+# SECURITY.md - DataShare
 
-Ce document présente les décisions de sécurité prises pour le MVP, les risques
-connus et acceptés, ainsi que le plan de mitigation associé. Il complète
-l'authentification et la gestion des accès déjà décrites dans le Dossier
-d'Architecture Technique.
+Ce document presente les decisions de securite prises pour le MVP, les risques connus et acceptes, ainsi que les mitigations associees.
 
----
+## 1. Scan De Securite
 
-## 1. Scan de sécurité basique
+### Outils
 
-### 1.1 Outils
-
-| Outil | Cible | Fréquence proposée |
+| Outil | Cible | Frequence proposee |
 |---|---|---|
-| `npm audit` | Dépendances backend (NestJS) | À chaque `npm install` + CI (future) |
-| `npm audit` | Dépendances frontend (React) | Idem |
-| GitHub Dependabot (si repo GitHub) | Alertes automatiques sur CVE | Continu |
+| `npm audit` | Dependances backend et frontend | A chaque `npm install` et en CI |
+| `npm audit --omit=dev` | Dependances runtime/production | Avant livraison |
+| GitHub Dependabot | Alertes automatiques sur CVE | Continu |
 
-### 1.2 Procédure
+### Commandes
+
+Depuis la racine du monorepo :
 
 ```bash
-# Backend
-cd backend && npm audit --production
-
-# Frontend
-cd frontend && npm audit --production
+npm audit
+npm audit --omit=dev
 ```
 
-Les vulnérabilités de sévérité **critical** ou **high** doivent être corrigées
-avant toute mise en production réelle. Les vulnérabilités **low/moderate**
-sans correctif disponible sont documentées ici avec justification du risque
-accepté.
+Les vulnerabilites `critical` ou `high` doivent etre corrigees avant une mise en production. Les vulnerabilites `low` ou `moderate` sans correctif disponible doivent etre documentees avec justification du risque accepte.
 
-### 1.3 Résultat du scan (à date du DAT)
+### Resultat Du Scan Apres Correction
 
-> À compléter avec une capture d'écran du rapport `npm audit` une fois les
-> dépendances figées. Format attendu : nombre de vulnérabilités par
-> sévérité, package concerné, action (corrigé / accepté / en attente).
+Date de verification : 2026-07-08.
 
----
+```bash
+npm audit --json
+```
 
-## 2. Risques identifiés et décisions
+Resultat :
 
-### 2.1 Stockage du JWT côté client (localStorage)
+```text
+0 vulnerabilities
+```
 
-**Risque** : le `localStorage` est accessible par n'importe quel script
-JavaScript exécuté dans la page. En cas de faille XSS (par exemple via une
-librairie tierce compromise, ou un champ mal échappé), un attaquant peut
-exfiltrer le token et usurper la session de l'utilisateur.
+Synthese :
 
-**Décision pour le MVP** : le token reste en `localStorage`, pour des raisons
-de simplicité d'implémentation (pas de gestion de cookie cross-origin entre
-le frontend Vite/localhost:5173 et le backend NestJS/localhost:3000).
+| Severite | Nombre |
+|---|---:|
+| Critical | 0 |
+| High | 0 |
+| Moderate | 0 |
+| Low | 0 |
+| Total | 0 |
 
-**Mitigations mises en place** :
-- Aucune librairie frontend tierce non auditée n'insère de contenu HTML brut
-  (pas de `dangerouslySetInnerHTML` sans sanitization).
-- Toute donnée affichée provenant du backend (nom de fichier, tags) est
-  échappée par défaut par React (protection XSS native du DOM virtuel).
-- `expiresIn` court (token JWT valable quelques heures), limitant la fenêtre
-  d'exploitation en cas de vol.
+Verification production/runtime :
 
-**Évolution recommandée (hors MVP)** : migrer vers un cookie `httpOnly`,
-`Secure`, `SameSite=Strict`, ce qui rend le token totalement inaccessible au
-JavaScript côté client. Nécessite de configurer le CORS avec
-`credentials: true` et un domaine partagé ou un reverse proxy en production.
+```bash
+npm audit --omit=dev --json
+```
 
-### 2.2 Absence de rate-limiting sur les endpoints sensibles
+Resultat :
 
-**Risque** : `POST /share-links/{token}/download` accepte un mot de passe en
-body. Sans limitation, un attaquant peut tenter un nombre illimité de mots de
-passe par seconde (brute force). Le même risque existe sur `POST
-/auth/login` (credential stuffing) et `POST /auth/register` (spam de
-comptes).
+```text
+0 vulnerabilities
+```
 
-**Décision** : mise en place de `@nestjs/throttler` sur ces trois endpoints.
+### Corrections Appliquees
 
-| Endpoint | Limite proposée |
+| Package / chaine | Probleme initial | Action |
+|---|---|---|
+| NestJS runtime (`@nestjs/common`, `@nestjs/core`, `@nestjs/platform-express`) | Vulnerabilites transitives `file-type`, `express`, `body-parser`, `multer`, injection Nest core | Mise a jour vers NestJS 11 (`@nestjs/common/core/platform-express@11.1.28`) |
+| `@nestjs/swagger` | `js-yaml`, `lodash`, compatibilite Nest | Mise a jour vers `@nestjs/swagger@11.4.5` |
+| `@nestjs/config` | `lodash` vulnerable | Mise a jour vers `@nestjs/config@4.0.4` |
+| `@nestjs/jwt`, `@nestjs/passport`, `@nestjs/testing` | Compatibilite Nest 11 | Mise a jour vers les versions compatibles Nest 11 |
+| `multer` | Denial of Service via multipart parsing / cleanup | Mise a jour vers `multer@2.2.0` |
+| Cypress toolchain | `@cypress/request`, `qs`, `uuid`, `lodash` | Mise a jour vers `cypress@15.18.1` |
+| Transitives (`file-type`, `lodash`, `qs`, `uuid`, `rxjs`) | Versions vulnerables ou doublons incompatibles | Ajout d'`overrides` npm et `npm dedupe` |
+
+### Verification De Non-Regression
+
+Commandes executees apres correction :
+
+```bash
+npm run build -w apps/api
+npm run test -w apps/api
+npm run build -w apps/web
+npm run test -w apps/web
+```
+
+Resultat :
+
+```text
+API build: passed
+API tests: 15 suites passed, 81 tests passed
+Web build: passed
+Web tests: 13 files passed, 39 tests passed
+```
+
+## 2. Risques Identifies Et Decisions
+
+### 2.1 JWT En LocalStorage
+
+Risque : le `localStorage` est accessible par tout script execute dans la page. En cas de faille XSS, un attaquant pourrait exfiltrer le token et usurper la session.
+
+Decision MVP : le token reste en `localStorage` pour garder une implementation simple entre le frontend Vite et le backend NestJS.
+
+Mitigations :
+
+- Pas d'injection HTML brute non controlee.
+- Les donnees backend affichees par React sont echappees par defaut.
+- La duree de vie du token reste limitee.
+
+Evolution recommandee : migrer vers un cookie `httpOnly`, `Secure`, `SameSite=Strict` avec CORS `credentials: true` et un domaine partage ou un reverse proxy.
+
+### 2.2 Rate Limiting Sur Les Endpoints Sensibles
+
+Risque : sans limitation, `POST /auth/login`, `POST /auth/register` et `POST /share-links/{token}/download` peuvent etre attaques par brute force ou credential stuffing.
+
+Decision : ajouter `@nestjs/throttler` sur ces endpoints.
+
+| Endpoint | Limite proposee |
 |---|---|
 | `POST /auth/login` | 5 tentatives / IP / minute |
 | `POST /auth/register` | 10 tentatives / IP / heure |
 | `POST /share-links/{token}/download` | 10 tentatives / IP / token / minute |
 
-Au-delà du seuil, réponse `429 Too Many Requests` au format
-`application/problem+json`, cohérent avec le reste de l'API.
+Les depassements doivent retourner `429 Too Many Requests` au format `application/problem+json`.
 
-### 2.3 Validation du type de fichier par extension uniquement
+### 2.3 Validation Du Type De Fichier
 
-**Risque** : se fier à l'extension du fichier (`.pdf`, `.jpg`) ou au
-`Content-Type` déclaré par le client HTTP est trivialement contournable — il
-suffit de renommer un fichier exécutable pour passer le contrôle.
+Risque : l'extension ou le `Content-Type` declare par le client peut etre falsifie.
 
-**Décision** : la validation du type MIME réel se fait par lecture des
-premiers octets du fichier (magic bytes), via une librairie type
-`file-type`, **côté serveur**, indépendamment de ce que déclare le client.
-La liste blanche/noire d'extensions autorisées reste à définir, mais la vérification ne doit jamais reposer sur la
-seule extension ou le header `Content-Type`.
+Decision : la validation doit reposer sur les premiers octets du fichier, cote serveur, avec une verification de type MIME reel. La liste blanche/noire d'extensions reste un controle complementaire, jamais le controle principal.
 
-### 2.4 Mot de passe des liens de partage
+### 2.4 Mot De Passe Des Liens De Partage
 
-**Risque** : un mot de passe de protection de fichier stocké en clair serait
-lisible en cas de fuite de la base de données.
+Risque : un mot de passe de lien stocke en clair serait lisible en cas de fuite de base de donnees.
 
-**Décision** : le mot de passe du `ShareLink` est hashé (bcrypt ou argon2)
-avant persistance, au même titre que le mot de passe utilisateur — jamais en
-clair, jamais loggé, jamais transmis dans l'URL (déjà respecté dans la
-spec OpenAPI : transmission via body JSON en `POST`).
+Decision : le mot de passe du `ShareLink` est hashe avant persistance. Il n'est jamais stocke en clair, jamais logge, et jamais transmis dans l'URL.
 
-### 2.5 Absence de vérification du propriétaire côté client
+### 2.5 Controle Du Proprietaire
 
-**Risque** : si le backend faisait confiance à un `userId` transmis par le
-client (body, query param) pour déterminer les droits, un attaquant pourrait
-modifier cette valeur pour accéder aux fichiers d'un autre utilisateur.
+Risque : si le backend faisait confiance a un `userId` transmis par le client, un attaquant pourrait acceder aux fichiers d'un autre utilisateur.
 
-**Décision** : déjà correctement anticipé dans le DAT — l'identité de
-l'utilisateur est **exclusivement** extraite du JWT signé côté serveur, et
-`DELETE /file-assets/{fileAssetId}` vérifie que `fileAsset.ownerId ===
-jwt.sub` avant toute suppression. Ce point est à couvrir explicitement par
-un test d'intégration (déjà prévu dans TESTING.md).
+Decision : l'identite utilisateur est exclusivement extraite du JWT signe cote serveur. La suppression d'un fichier verifie que `fileAsset.ownerId === jwt.sub`.
 
-### 2.6 Taille de fichier et déni de service applicatif
+### 2.6 Taille De Fichier Et DoS Applicatif
 
-**Risque** : sans limite stricte appliquée en amont du traitement, un upload
-de fichier volumineux peut saturer la mémoire ou le disque du serveur, même
-avec un traitement en streaming.
+Risque : un upload volumineux peut saturer la memoire ou le disque serveur.
 
-**Décision** :
-- Limite de 1 Go appliquée **avant** le début du traitement, via
-  configuration du middleware multipart (pas de vérification a posteriori
-  sur un fichier déjà entièrement reçu).
-- Le traitement en streaming (déjà spécifié dans l'OpenAPI) évite de charger
-  le fichier en mémoire, réduisant le risque de saturation RAM même en cas
-  d'upload proche de la limite.
-- Surveillance de l'espace disque disponible à prévoir en production
-  (hors périmètre du MVP local).
+Decision :
 
-### 2.7 Fuite d'information via les messages d'erreur
+- Limite de 1 Go appliquee avant traitement.
+- Traitement en streaming pour eviter de charger le fichier entier en memoire.
+- Surveillance disque a prevoir en production.
 
-**Risque** : des messages d'erreur trop détaillés (stack trace, chemin de
-fichier serveur, requête SQL) peuvent révéler des informations exploitables
-par un attaquant.
+### 2.7 Fuite D'information Dans Les Erreurs
 
-**Décision** : toutes les erreurs suivent le format standardisé
-`application/problem+json` (RFC 9457) déjà défini dans l'OpenAPI, avec des
-messages génériques côté client. Les détails techniques (stack trace) sont
-uniquement loggés côté serveur, jamais renvoyés dans la réponse HTTP,
-y compris en cas d'erreur 500 non gérée explicitement.
+Risque : des messages d'erreur trop detailles peuvent exposer stack traces, chemins serveur ou details SQL.
+
+Decision : les erreurs publiques suivent `application/problem+json` avec messages generiques. Les details techniques restent dans les logs serveur.
 
 ### 2.8 CORS
 
-**Risque** : une configuration CORS trop permissive (`*`) exposerait l'API à
-des appels depuis n'importe quel domaine.
+Risque : une configuration CORS permissive (`*`) expose l'API a des appels depuis n'importe quel domaine.
 
-**Décision** : le backend NestJS restreint `Access-Control-Allow-Origin` à
-l'origine exacte du frontend (`http://localhost:5173` en développement, à
-adapter en production), et non un wildcard.
+Decision : le backend restreint `Access-Control-Allow-Origin` a l'origine exacte du frontend, par exemple `http://localhost:5173` en developpement.
 
-### 2.9 Gestion des secrets
+### 2.9 Gestion Des Secrets
 
-**Risque** : un secret JWT ou des identifiants de base de données commités
-dans le repository Git exposeraient l'application en cas de dépôt public ou
-de fuite.
+Risque : un secret JWT ou une URL de base de donnees committe exposerait l'application.
 
-**Décision** : toutes les valeurs sensibles (`JWT_SECRET`,
-`DATABASE_URL`, futurs identifiants S3) transitent par variables
-d'environnement via un fichier `.env` non commité (présent dans
-`.gitignore`), avec un `.env.example` documentant les clés attendues sans
-valeurs réelles.
+Decision : les secrets transitent par variables d'environnement via `.env`, non committe. `.env.example` documente les cles attendues sans valeurs sensibles.
 
----
-
-## 3. Synthèse des décisions
+## 3. Synthese
 
 | # | Risque | Statut | Mitigation |
 |---|---|---|---|
-| 2.1 | JWT en localStorage (XSS) | Accepté pour le MVP | Token court, pas d'injection HTML brute |
-| 2.2 | Absence de rate-limiting | À implémenter | `@nestjs/throttler` sur login/register/download |
-| 2.3 | Validation par extension seule | À implémenter | Vérification magic bytes côté serveur |
-| 2.4 | Mot de passe lien en clair | Résolu par design | Hash bcrypt/argon2 |
-| 2.5 | Confiance dans le userId client | Résolu par design | Identité extraite du JWT uniquement |
-| 2.6 | DoS via upload volumineux | Résolu par design | Limite 1 Go + streaming |
-| 2.7 | Fuite d'info dans les erreurs | Résolu par design | Format problem+json générique |
-| 2.8 | CORS permissif | À configurer | Origine explicite, pas de wildcard |
-| 2.9 | Secrets commités | À vérifier | `.env` + `.gitignore` |
+| 2.1 | JWT en localStorage | Accepte MVP | Token court, pas d'injection HTML brute |
+| 2.2 | Absence de rate limiting | A implementer | `@nestjs/throttler` |
+| 2.3 | Validation par extension seule | A implementer | Magic bytes cote serveur |
+| 2.4 | Mot de passe lien en clair | Resolu | Hash avant persistance |
+| 2.5 | Confiance dans le userId client | Resolu | Identite extraite du JWT |
+| 2.6 | DoS via upload volumineux | Resolu | Limite 1 Go + streaming |
+| 2.7 | Fuite d'information dans les erreurs | Resolu | `problem+json` generique |
+| 2.8 | CORS permissif | Configure | Origine explicite |
+| 2.9 | Secrets committes | Configure | `.env` ignore + `.env.example` |
 
----
-
-## 4. Hors périmètre du MVP (évolutions futures)
+## 4. Hors Perimetre Du MVP
 
 - Migration JWT vers cookie `httpOnly` + `SameSite`.
 - 2FA / MFA pour les comptes utilisateurs.
-- Scan antivirus des fichiers téléversés (type ClamAV) avant stockage.
-- Chiffrement au repos des fichiers stockés (au-delà du chiffrement natif S3).
-- Journalisation d'audit des accès aux liens de partage (IP, timestamp).
+- Scan antivirus des fichiers televerses.
+- Chiffrement au repos des fichiers stockes.
+- Journalisation d'audit des acces aux liens de partage.
