@@ -12,9 +12,11 @@ coverage/
 *.iml
 .vscode/
 
-apps/api/storage/uploads/*
+apps/api/storage/**
+!apps/api/storage/
+!apps/api/storage/uploads/
 !apps/api/storage/uploads/.gitkeep
-apps/api/storage/tmp/*
+!apps/api/storage/tmp/
 !apps/api/storage/tmp/.gitkeep
 
 apps/api/dist/
