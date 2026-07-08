@@ -11,7 +11,7 @@ export class LocalStorageAdapter implements StoragePort {
   private readonly rootPath: string;
 
   constructor(@Inject(ConfigService) config: ConfigService) {
-    this.rootPath = resolve(config.get<string>('storage.localRoot') ?? 'apps/api/storage/uploads');
+    this.rootPath = resolve(config.get<string>('storage.localRoot') ?? 'storage/uploads');
   }
 
   async save(input: SaveFileInput): Promise<StoredFile> {
