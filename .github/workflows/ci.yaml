@@ -44,6 +44,9 @@ jobs:
       - name: Generate Prisma client
         run: npm run api:db:generate
 
+      - name: Build shared package
+        run: npm run build -w packages/shared
+
       - name: Run back end unit tests
         run: npm run test -w apps/api -- --runInBand --testRegex='test/unit/.*\.spec\.ts$'
 
