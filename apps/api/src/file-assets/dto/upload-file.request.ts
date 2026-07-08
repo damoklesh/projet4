@@ -1,22 +1,25 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
+import { IsInt, IsOptional, IsString, Max, Min, MinLength } from 'class-validator';
 
 export class UploadFileRequestDto {
-  @ApiPropertyOptional({ description: 'Optional link password.' })
+  @ApiPropertyOptional({ description: 'Optional link password, minimum 6 characters.' })
   @IsOptional()
   @IsString()
+  @MinLength(6)
   password?: string;
 
-  @ApiPropertyOptional({ minimum: 1, maximum: 30, default: 7 })
+  @ApiPropertyOptional({ minimum: 1, maximum: 7, default: 7 })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)
-  @Max(30)
-  expiresInDays?: number;
+  @Max(7)
+  expirationDays?: number;
 
-  @ApiPropertyOptional({ description: 'Comma-separated tag names for authenticated users.' })
+  @ApiPropertyOptional({
+    description: 'Comma-separated tag names. Each tag is limited to 30 characters.',
+  })
   @IsOptional()
   @IsString()
   tags?: string;

@@ -16,7 +16,7 @@ export function UploadPage() {
       </div>
       {error ? <Callout tone="danger">{error}</Callout> : null}
       <UploadCard isLoading={isLoading} onUpload={async (input) => void (await upload(input))} />
-      {lastUpload ? <ShareLinkCard token={lastUpload.shareToken} /> : null}
+      {lastUpload ? <ShareLinkCard url={lastUpload.shareLink.url} /> : null}
     </section>
   );
 }

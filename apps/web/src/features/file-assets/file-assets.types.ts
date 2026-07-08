@@ -6,20 +6,37 @@ export type SortOrder = 'asc' | 'desc';
 export interface UploadFileInput {
   file: File;
   password?: string;
-  expiresInDays?: number;
+  expirationDays?: number;
   tags?: string;
 }
 
-export interface FileAssetResponse {
+export interface UploadedFileTag {
   id: string;
-  originalName: string;
+  name: string;
+}
+
+export interface UploadedFileAsset {
+  id: string;
+  fileName: string;
   mimeType: string;
   size: number;
   uploadedAt: string;
-  status: FileStatus;
-  shareToken: string;
   expiresAt: string;
-  ownerId?: string | null;
+  status: FileStatus;
+  isPasswordProtected: boolean;
+  tags: UploadedFileTag[];
+}
+
+export interface UploadedShareLink {
+  url: string;
+  token: string;
+  expiresAt: string;
+  isPasswordProtected: boolean;
+}
+
+export interface FileAssetResponse {
+  fileAsset: UploadedFileAsset;
+  shareLink: UploadedShareLink;
 }
 
 export interface FileAssetHistoryItem {

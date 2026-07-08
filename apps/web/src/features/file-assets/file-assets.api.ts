@@ -15,8 +15,8 @@ export const fileAssetsApi = {
       formData.append('password', input.password);
     }
 
-    if (input.expiresInDays) {
-      formData.append('expiresInDays', String(input.expiresInDays));
+    if (input.expirationDays) {
+      formData.append('expirationDays', String(input.expirationDays));
     }
 
     if (input.tags) {

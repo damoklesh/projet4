@@ -8,7 +8,7 @@ export class FileAssetsRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   createWithShareLink(input: {
-    ownerId?: string | null;
+    ownerId: string;
     originalName: string;
     storageName: string;
     storagePath: string;
@@ -17,26 +17,68 @@ export class FileAssetsRepository {
     token: string;
     expiresAt: Date;
     passwordHash?: string | null;
+    tags?: string[];
   }) {
-    return this.prisma.fileAsset.create({
-      data: {
-        ownerId: input.ownerId,
-        originalName: input.originalName,
-        storageName: input.storageName,
-        storagePath: input.storagePath,
-        mimeType: input.mimeType,
-        size: BigInt(input.size),
-        shareLink: {
-          create: {
-            token: input.token,
-            expiresAt: input.expiresAt,
-            passwordHash: input.passwordHash,
+    return this.prisma.$transaction(async (tx) => {
+      const fileAsset = await tx.fileAsset.create({
+        data: {
+          ownerId: input.ownerId,
+          originalName: input.originalName,
+          storageName: input.storageName,
+          storagePath: input.storagePath,
+          mimeType: input.mimeType,
+          size: BigInt(input.size),
+          shareLink: {
+            create: {
+              token: input.token,
+              expiresAt: input.expiresAt,
+              passwordHash: input.passwordHash,
+            },
           },
         },
-      },
-      include: {
-        shareLink: true,
-      },
+      });
+
+      for (const tagName of input.tags ?? []) {
+        const tag = await tx.tag.upsert({
+          where: {
+            userId_name: {
+              userId: input.ownerId,
+              name: tagName,
+            },
+          },
+          update: {},
+          create: {
+            userId: input.ownerId,
+            name: tagName,
+          },
+        });
+
+        await tx.fileTag.upsert({
+          where: {
+            fileAssetId_tagId: {
+              fileAssetId: fileAsset.id,
+              tagId: tag.id,
+            },
+          },
+          update: {},
+          create: {
+            fileAssetId: fileAsset.id,
+            tagId: tag.id,
+          },
+        });
+      }
+
+      return tx.fileAsset.findUniqueOrThrow({
+        where: { id: fileAsset.id },
+        include: {
+          shareLink: true,
+          fileTags: {
+            include: {
+              tag: true,
+            },
+          },
+        },
+      });
     });
   }
 

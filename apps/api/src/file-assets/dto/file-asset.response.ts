@@ -1,12 +1,20 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty } from '@nestjs/swagger';
 import type { FileStatus } from '@datashare/shared';
 
-export class FileAssetResponseDto {
+export class UploadedFileTagResponseDto {
   @ApiProperty()
   id: string;
 
   @ApiProperty()
-  originalName: string;
+  name: string;
+}
+
+export class UploadedFileAssetResponseDto {
+  @ApiProperty()
+  id: string;
+
+  @ApiProperty()
+  fileName: string;
 
   @ApiProperty()
   mimeType: string;
@@ -17,15 +25,37 @@ export class FileAssetResponseDto {
   @ApiProperty()
   uploadedAt: Date;
 
+  @ApiProperty()
+  expiresAt: Date;
+
   @ApiProperty({ enum: ['active', 'expired', 'deleted'] })
   status: FileStatus;
 
   @ApiProperty()
-  shareToken: string;
+  isPasswordProtected: boolean;
+
+  @ApiProperty({ type: [UploadedFileTagResponseDto] })
+  tags: UploadedFileTagResponseDto[];
+}
+
+export class UploadedShareLinkResponseDto {
+  @ApiProperty()
+  url: string;
+
+  @ApiProperty()
+  token: string;
 
   @ApiProperty()
   expiresAt: Date;
 
-  @ApiPropertyOptional({ nullable: true })
-  ownerId?: string | null;
+  @ApiProperty()
+  isPasswordProtected: boolean;
+}
+
+export class FileAssetResponseDto {
+  @ApiProperty({ type: UploadedFileAssetResponseDto })
+  fileAsset: UploadedFileAssetResponseDto;
+
+  @ApiProperty({ type: UploadedShareLinkResponseDto })
+  shareLink: UploadedShareLinkResponseDto;
 }
