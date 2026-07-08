@@ -94,8 +94,7 @@ suffit de renommer un fichier exécutable pour passer le contrôle.
 **Décision** : la validation du type MIME réel se fait par lecture des
 premiers octets du fichier (magic bytes), via une librairie type
 `file-type`, **côté serveur**, indépendamment de ce que déclare le client.
-La liste blanche/noire d'extensions autorisées reste à définir avec le
-référent pédagogique, mais la vérification ne doit jamais reposer sur la
+La liste blanche/noire d'extensions autorisées reste à définir, mais la vérification ne doit jamais reposer sur la
 seule extension ou le header `Content-Type`.
 
 ### 2.4 Mot de passe des liens de partage

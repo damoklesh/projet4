@@ -1,14 +1,245 @@
 # Testing
 
-## Backend
+This document describes the DataShare testing strategy, the generated reports, and the latest quality results.
 
-- Unit tests: Jest tests under `apps/api/test/unit`.
-- Integration tests: Jest + Supertest tests under `apps/api/test/integration`.
-- Prepared scenarios: auth register/login, upload, history, delete file, share metadata, download with and without password, expired link, unauthorized access.
+## Test Strategy
 
-## Frontend
+DataShare uses several complementary test levels:
 
-- Unit and smoke tests: Vitest + React Testing Library under `apps/web/src/**/*.test.tsx`.
-- Store tests: Zustand stores can be tested with Vitest by resetting store state between tests.
-- API tests: mock `fetch` around `services/http-client.ts`.
-- E2E: Cypress specs are prepared under `apps/web/cypress/e2e`.
+- Backend unit tests validate isolated services, repositories, DTOs, storage adapters, configuration helpers, guards, and platform lifecycle behavior.
+- Backend integration tests validate the NestJS HTTP API with Supertest.
+- Frontend unit and smoke tests validate React pages, UI components, Zustand stores, service helpers, and API client behavior with Vitest and React Testing Library.
+- Cypress E2E tests validate the main user journeys through the browser.
+- ESLint reports enforce static code quality across backend, frontend, and Cypress test code.
+
+The goal is to keep business rules covered close to the implementation, then use E2E tests for the most important cross-layer flows.
+
+## Commands
+
+Run the standard quality checks:
+
+```bash
+npm run quality
+```
+
+Generate lint and coverage reports:
+
+```bash
+npm run reports
+```
+
+Generate only coverage reports:
+
+```bash
+npm run test:coverage
+```
+
+Generate only lint reports:
+
+```bash
+npm run lint:report
+```
+
+Run Cypress manually when the web application is available:
+
+```bash
+npm run dev -w apps/web
+npm run test:e2e:report -w apps/web
+```
+
+## Latest Coverage Results
+
+The latest `npm run test:coverage` execution passed for both backend and frontend.
+
+### Backend Coverage
+
+Report path:
+
+```text
+reports/api/coverage/index.html
+reports/api/coverage/coverage-summary.json
+reports/api/coverage/lcov.info
+```
+
+Latest backend totals:
+
+| Metric | Covered | Total | Coverage |
+| --- | ---: | ---: | ---: |
+| Statements | 482 | 578 | 83.39% |
+| Lines | 428 | 508 | 84.25% |
+| Functions | 86 | 88 | 97.72% |
+| Branches | 87 | 110 | 79.09% |
+
+Backend result:
+
+```text
+Test Suites: 15 passed, 15 total
+Tests: 81 passed, 81 total
+Snapshots: 0 total
+```
+
+The backend coverage was increased by adding focused tests for:
+
+- configuration defaults and production environment validation;
+- file asset and share link repository query construction;
+- local storage adapter and storage service delegation;
+- users and tags repositories/services;
+- response DTOs;
+- Prisma lifecycle hooks, JWT strategy mapping, optional JWT guard behavior, and S3 placeholder errors.
+
+### Frontend Coverage
+
+Report path:
+
+```text
+reports/web/coverage/index.html
+reports/web/coverage/coverage-summary.json
+reports/web/coverage/lcov.info
+```
+
+Latest frontend totals:
+
+| Metric | Covered | Total | Coverage |
+| --- | ---: | ---: | ---: |
+| Statements | 319 | 423 | 75.41% |
+| Lines | 300 | 401 | 74.81% |
+| Functions | 106 | 154 | 68.83% |
+| Branches | 185 | 269 | 68.77% |
+
+Frontend result:
+
+```text
+Test Files: 13 passed, 13 total
+Tests: 39 passed, 39 total
+```
+
+The frontend suite covers:
+
+- authentication pages and validation;
+- registration flow;
+- public share link metadata and binary download handling;
+- upload page and upload card behavior;
+- history page listing and deletion confirmation;
+- UI components;
+- Zustand auth and file asset stores;
+- API service helpers and HTTP error handling.
+
+## Cypress E2E Report
+
+The latest Cypress JSON report is stored at:
+
+```text
+reports/web/cypress/cypress.json
+```
+
+Latest Cypress execution:
+
+| Field | Value |
+| --- | --- |
+| Status | passed |
+| Browser | Electron 118.0.5993.159 |
+| Cypress | 13.17.0 |
+| OS | win32 10.0.19045 |
+| Duration | 8613 ms |
+| Suites | 4 |
+| Tests | 7 |
+| Passed | 7 |
+| Failed | 0 |
+| Pending | 0 |
+| Skipped | 0 |
+
+Covered Cypress scenarios:
+
+| Spec | Tests | Result |
+| --- | ---: | --- |
+| `cypress/e2e/history-delete.cy.ts` | 2 | passed |
+| `cypress/e2e/register-login.cy.ts` | 2 | passed |
+| `cypress/e2e/share-link-download.cy.ts` | 2 | passed |
+| `cypress/e2e/upload-file.cy.ts` | 1 | passed |
+
+Scenario details:
+
+- Upload a file while authenticated.
+- Display history and delete a file from history.
+- Log in and open `Mon espace`.
+- Register a new user and open `Mon espace`.
+- Download a public file without authentication.
+- Download a public file while authenticated.
+- Upload a file without authentication and display the public share link.
+
+The Cypress report is generated by the `after:run` hook in `apps/web/cypress.config.ts`.
+
+## Linting Reports
+
+Lint reports are generated as JSON files:
+
+```text
+reports/api/lint/eslint.json
+reports/web/lint/eslint.json
+```
+
+Backend lint command:
+
+```bash
+npm run lint:report -w apps/api
+```
+
+Frontend lint command:
+
+```bash
+npm run lint:report -w apps/web
+```
+
+Root lint report command:
+
+```bash
+npm run lint:report
+```
+
+The backend lint report checks:
+
+- `apps/api/src/**/*.ts`
+- `apps/api/test/**/*.ts`
+
+The frontend lint report checks:
+
+- `apps/web/src/**/*.{ts,tsx}`
+- `apps/web/cypress/**/*.ts`
+- `apps/web/cypress.config.ts`
+
+The linting strategy is intentionally lightweight:
+
+- ESLint catches TypeScript, React Hooks, and general JavaScript/TypeScript issues.
+- Prettier is integrated through `eslint-config-prettier` to avoid formatting-rule conflicts.
+- Cypress specs and config are included in frontend linting because they are executable test code.
+- Generated outputs such as `dist/`, `coverage/`, `reports/`, Cypress screenshots, videos, and downloads are ignored.
+
+Lint reports are useful for CI because JSON output can be archived or parsed by external quality tools.
+
+## Quality Gates
+
+Current quality expectations:
+
+- `npm run lint` must pass before merging.
+- `npm run test` must pass before merging.
+- `npm run build` must pass before merging.
+- `npm run test:coverage` should be generated before delivery or review.
+- Cypress should be run manually or in CI for changes touching authentication, upload, download, history, or routing.
+
+The root command combines the core local checks:
+
+```bash
+npm run quality
+```
+
+It runs linting, tests, and production builds. Cypress is kept separate because it requires a running web application and browser execution.
+
+## Report Storage
+
+All generated reports are written under:
+
+```text
+reports/
+```
+
+This directory is ignored by Git. Reports should be regenerated locally or by CI rather than committed.

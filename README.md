@@ -149,6 +149,59 @@ npm run test
 npm run test:e2e
 ```
 
+## Coverage Generation
+
+Generate lint and unit/integration coverage reports from the repository root:
+
+```bash
+npm run reports
+```
+
+This runs:
+
+```bash
+npm run lint:report
+npm run test:coverage
+```
+
+Generated reports are written under `reports/`:
+
+- API lint report: `reports/api/lint/eslint.json`
+- API coverage report: `reports/api/coverage/index.html`
+- API LCOV report: `reports/api/coverage/lcov.info`
+- API coverage summary: `reports/api/coverage/coverage-summary.json`
+- Web lint report: `reports/web/lint/eslint.json`
+- Web coverage report: `reports/web/coverage/index.html`
+- Web LCOV report: `reports/web/coverage/lcov.info`
+- Web coverage summary: `reports/web/coverage/coverage-summary.json`
+
+To generate only coverage reports:
+
+```bash
+npm run test:coverage
+```
+
+To generate only lint reports:
+
+```bash
+npm run lint:report
+```
+
+To generate the Cypress E2E report, start the web app first, then run Cypress reporting:
+
+```bash
+npm run dev -w apps/web
+npm run test:e2e:report -w apps/web
+```
+
+The Cypress JSON report is written to:
+
+```text
+reports/web/cypress/cypress.json
+```
+
+The `reports/` directory is ignored by Git.
+
 ## Database Migrations
 
 Prisma owns the PostgreSQL schema under `apps/api/prisma/schema.prisma`; committed SQL migrations live under `apps/api/prisma/migrations`.

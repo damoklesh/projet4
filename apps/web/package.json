@@ -7,9 +7,12 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "lint": "eslint \"src/**/*.{ts,tsx}\" \"cypress/**/*.ts\"",
+    "lint": "eslint \"src/**/*.{ts,tsx}\" \"cypress/**/*.ts\" \"cypress.config.ts\"",
+    "lint:report": "node -e \"require('fs').mkdirSync('../../reports/web/lint',{recursive:true})\" && eslint \"src/**/*.{ts,tsx}\" \"cypress/**/*.ts\" \"cypress.config.ts\" -f json -o ../../reports/web/lint/eslint.json",
     "test": "vitest run --config vitest.config.mjs",
-    "test:e2e": "echo \"Cypress e2e structure prepared under apps/web/cypress\""
+    "test:coverage": "vitest run --config vitest.config.mjs --coverage",
+    "test:e2e": "cypress run",
+    "test:e2e:report": "cypress run"
   },
   "dependencies": {
     "@datashare/shared": "0.1.0",
@@ -26,6 +29,7 @@
     "@types/react": "^18.3.5",
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^6.0.3",
+    "@vitest/coverage-v8": "^4.1.10",
     "cypress": "^13.13.0",
     "jsdom": "^29.1.1",
     "vite": "^8.1.3",

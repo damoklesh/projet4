@@ -1,6 +1,7 @@
 node_modules/
 dist/
 coverage/
+reports/
 .env
 .env.local
 .DS_Store
@@ -21,6 +22,7 @@ apps/api/storage/**
 
 apps/api/dist/
 apps/web/dist/
+apps/web/cypress/downloads/
 apps/web/cypress/videos/
 apps/web/cypress/screenshots/
 packages/*/dist/
