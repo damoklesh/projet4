@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Res, StreamableFile } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpStatus, Param, Post, Res, StreamableFile } from '@nestjs/common';
 import { ApiBody, ApiOkResponse, ApiProduces, ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
 import { DownloadRequestDto } from './dto/download.request';
@@ -19,6 +19,7 @@ export class ShareLinksController {
   @ApiBody({ type: DownloadRequestDto, required: false })
   @ApiProduces('application/octet-stream')
   @ApiOkResponse({ description: 'Streams the file binary.' })
+  @HttpCode(HttpStatus.OK)
   async download(
     @Param('token') token: string,
     @Body() dto: DownloadRequestDto,
@@ -26,7 +27,7 @@ export class ShareLinksController {
   ): Promise<StreamableFile> {
     const file = await this.shareLinksService.download(token, dto);
 
-    response.setHeader('Content-Type', file.mimeType || 'application/octet-stream');
+    response.setHeader('Content-Type', 'application/octet-stream');
     response.setHeader('Content-Length', String(file.size));
     response.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(file.fileName)}"`);
 

@@ -75,4 +75,40 @@ describe('httpClient', () => {
     });
     expect(localStorage.getItem('datashare.auth')).toBeNull();
   });
+
+  it('does not clear auth state or redirect on 401 when redirectOnUnauthorized is false', async () => {
+    localStorage.setItem(
+      'datashare.auth',
+      JSON.stringify({
+        accessToken: 'jwt-token',
+        tokenType: 'Bearer',
+        expiresIn: 3600,
+        user: {
+          id: 'user-id',
+          email: 'user@example.com',
+          avatar: null,
+        },
+      }),
+    );
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          type: 'https://datashare.local/problems/401',
+          title: 'Unauthorized',
+          status: 401,
+          detail: 'A valid password is required.',
+        }),
+        {
+          status: 401,
+          headers: { 'content-type': 'application/problem+json' },
+        },
+      ),
+    );
+
+    await expect(httpClient('/share-links/token/download', { redirectOnUnauthorized: false })).rejects.toMatchObject({
+      status: 401,
+      message: 'A valid password is required.',
+    });
+    expect(localStorage.getItem('datashare.auth')).not.toBeNull();
+  });
 });

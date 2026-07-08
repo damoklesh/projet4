@@ -4,9 +4,14 @@ import { clearStoredAuthSession, getStoredAuthToken } from './auth-session';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000';
 
-export async function httpClient<TData>(path: string, options: RequestInit = {}): Promise<TData> {
+interface HttpClientOptions extends RequestInit {
+  redirectOnUnauthorized?: boolean;
+}
+
+export async function httpClient<TData>(path: string, options: HttpClientOptions = {}): Promise<TData> {
+  const { redirectOnUnauthorized = true, ...fetchOptions } = options;
   const headers = new Headers(options.headers);
-  const isFormData = options.body instanceof FormData;
+  const isFormData = fetchOptions.body instanceof FormData;
 
   if (!isFormData && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json');
@@ -19,12 +24,12 @@ export async function httpClient<TData>(path: string, options: RequestInit = {})
   }
 
   const response = await fetch(`${API_BASE_URL}${path}`, {
-    ...options,
+    ...fetchOptions,
     headers,
   });
 
   if (!response.ok) {
-    await handleErrorResponse(response);
+    await handleErrorResponse(response, { redirectOnUnauthorized });
   }
 
   if (response.status === 204) {
@@ -41,13 +46,16 @@ export async function httpClient<TData>(path: string, options: RequestInit = {})
   return envelope.data;
 }
 
-async function handleErrorResponse(response: Response): Promise<never> {
+async function handleErrorResponse(
+  response: Response,
+  options: { redirectOnUnauthorized: boolean },
+): Promise<never> {
   const contentType = response.headers.get('content-type') ?? '';
   const problem = contentType.includes('application/problem+json')
     ? ((await response.json()) as ProblemDetails)
     : undefined;
 
-  if (response.status === 401) {
+  if (response.status === 401 && options.redirectOnUnauthorized) {
     clearStoredAuthSession();
     window.location.assign('/login');
   }

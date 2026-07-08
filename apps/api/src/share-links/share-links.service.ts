@@ -1,4 +1,4 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { GoneException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import bcrypt from 'bcryptjs';
 import type { ReadStream } from 'node:fs';
 import { ExpirationService } from '../expiration/expiration.service';
@@ -29,6 +29,8 @@ export class ShareLinksService {
       throw new NotFoundException('Share link not found.');
     }
 
+    this.ensureShareLinkIsAvailable(shareLink);
+
     return {
       token: shareLink.token,
       fileName: shareLink.fileAsset.originalName,
@@ -36,7 +38,7 @@ export class ShareLinksService {
       size: Number(shareLink.fileAsset.size),
       uploadedAt: shareLink.fileAsset.uploadedAt,
       expiresAt: shareLink.expiresAt,
-      passwordProtected: Boolean(shareLink.passwordHash),
+      isPasswordProtected: Boolean(shareLink.passwordHash),
       status: this.expirationService.getFunctionalStatus({
         deletedAt: shareLink.fileAsset.deletedAt,
         expiresAt: shareLink.expiresAt,
@@ -51,9 +53,7 @@ export class ShareLinksService {
       throw new NotFoundException('Share link not found.');
     }
 
-    if (shareLink.fileAsset.deletedAt || this.expirationService.isExpired(shareLink.expiresAt)) {
-      throw new ForbiddenException('Share link is no longer available.');
-    }
+    this.ensureShareLinkIsAvailable(shareLink);
 
     if (shareLink.passwordHash) {
       const passwordMatches = dto.password
@@ -61,15 +61,31 @@ export class ShareLinksService {
         : false;
 
       if (!passwordMatches) {
-        throw new ForbiddenException('A valid password is required.');
+        throw new UnauthorizedException('A valid password is required.');
       }
     }
 
+    const stream = this.storageService.createReadStream(shareLink.fileAsset.storagePath);
+    await this.shareLinksRepository.incrementDownloadCount(shareLink.id);
+
     return {
-      stream: this.storageService.createReadStream(shareLink.fileAsset.storagePath),
+      stream,
       fileName: shareLink.fileAsset.originalName,
       mimeType: shareLink.fileAsset.mimeType,
       size: Number(shareLink.fileAsset.size),
     };
+  }
+
+  private ensureShareLinkIsAvailable(shareLink: {
+    expiresAt: Date;
+    fileAsset: { deletedAt: Date | null };
+  }): void {
+    if (shareLink.fileAsset.deletedAt) {
+      throw new GoneException('Shared file has been deleted.');
+    }
+
+    if (this.expirationService.isExpired(shareLink.expiresAt)) {
+      throw new GoneException('Share link has expired.');
+    }
   }
 }

@@ -7,7 +7,7 @@ export interface ShareLinkMetadata {
   size: number;
   uploadedAt: string;
   expiresAt: string;
-  passwordProtected: boolean;
+  isPasswordProtected: boolean;
   status: FileStatus;
 }
 

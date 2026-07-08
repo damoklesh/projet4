@@ -21,7 +21,7 @@ export class ShareLinkMetadataResponseDto {
   expiresAt: Date;
 
   @ApiProperty()
-  passwordProtected: boolean;
+  isPasswordProtected: boolean;
 
   @ApiProperty({ enum: ['active', 'expired', 'deleted'] })
   status: FileStatus;

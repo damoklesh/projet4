@@ -10,6 +10,7 @@ export const shareLinksApi = {
     return httpClient<Blob>(`/share-links/${input.token}/download`, {
       method: 'POST',
       body: JSON.stringify({ password: input.password }),
+      redirectOnUnauthorized: false,
     });
   },
 };
