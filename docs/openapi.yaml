@@ -1,0 +1,6 @@
+openapi: 3.0.3
+info:
+  title: DataShare API
+  version: 0.1.0
+  description: Initial OpenAPI placeholder. The NestJS Swagger setup exposes live docs at /docs.
+paths: {}

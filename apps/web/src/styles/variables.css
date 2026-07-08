@@ -1,0 +1,16 @@
+:root {
+  color-scheme: light;
+  --color-bg: #f7f8fa;
+  --color-surface: #ffffff;
+  --color-border: #d9dee7;
+  --color-text: #111827;
+  --color-muted: #5f6b7a;
+  --color-primary: #0f766e;
+  --color-primary-strong: #0b5f59;
+  --color-danger: #b42318;
+  --color-danger-bg: #fff0ed;
+  --color-info-bg: #eef6ff;
+  --color-success-bg: #edfdf3;
+  --shadow-panel: 0 16px 40px rgba(17, 24, 39, 0.08);
+  --radius: 8px;
+}

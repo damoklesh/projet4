@@ -1,0 +1,50 @@
+import { httpClient } from '../../services/http-client';
+import type {
+  FileAssetHistoryQuery,
+  FileAssetHistoryResult,
+  FileAssetResponse,
+  UploadFileInput,
+} from './file-assets.types';
+
+export const fileAssetsApi = {
+  upload(input: UploadFileInput): Promise<FileAssetResponse> {
+    const formData = new FormData();
+    formData.append('file', input.file);
+
+    if (input.password) {
+      formData.append('password', input.password);
+    }
+
+    if (input.expiresInDays) {
+      formData.append('expiresInDays', String(input.expiresInDays));
+    }
+
+    if (input.tags) {
+      formData.append('tags', input.tags);
+    }
+
+    return httpClient<FileAssetResponse>('/file-assets', {
+      method: 'POST',
+      body: formData,
+    });
+  },
+
+  history(query: FileAssetHistoryQuery = {}): Promise<FileAssetHistoryResult> {
+    const searchParams = new URLSearchParams();
+
+    Object.entries(query).forEach(([key, value]) => {
+      if (value !== undefined && value !== '') {
+        searchParams.set(key, String(value));
+      }
+    });
+
+    const qs = searchParams.toString();
+    return httpClient<FileAssetHistoryResult>(`/me/file-assets${qs ? `?${qs}` : ''}`);
+  },
+
+  delete(fileAssetId: string): Promise<{ deleted: true }> {
+    return httpClient<{ deleted: true }>(`/file-assets/${fileAssetId}`, {
+      method: 'DELETE',
+    });
+  },
+};

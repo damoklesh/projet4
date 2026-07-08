@@ -1,0 +1,78 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String      @id @default(uuid()) @db.Uuid
+  email        String      @unique
+  passwordHash String      @map("password_hash")
+  avatar       String?
+  createdAt    DateTime    @default(now()) @map("created_at")
+  updatedAt    DateTime    @updatedAt @map("updated_at")
+  fileAssets   FileAsset[]
+  tags         Tag[]
+
+  @@map("users")
+}
+
+model FileAsset {
+  id           String     @id @default(uuid()) @db.Uuid
+  ownerId      String?    @map("owner_id") @db.Uuid
+  owner        User?      @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+  originalName String     @map("original_name")
+  storageName  String     @unique @map("storage_name")
+  storagePath  String     @map("storage_path")
+  mimeType     String     @map("mime_type")
+  size         BigInt
+  uploadedAt   DateTime   @default(now()) @map("uploaded_at")
+  deletedAt    DateTime?  @map("deleted_at")
+  shareLink    ShareLink?
+  fileTags     FileTag[]
+
+  @@index([ownerId, uploadedAt])
+  @@index([deletedAt])
+  @@map("file_assets")
+}
+
+model ShareLink {
+  id            String    @id @default(uuid()) @db.Uuid
+  fileAssetId   String    @unique @map("file_asset_id") @db.Uuid
+  fileAsset     FileAsset @relation(fields: [fileAssetId], references: [id], onDelete: Cascade)
+  token         String    @unique
+  passwordHash  String?   @map("password_hash")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  expiresAt     DateTime  @map("expires_at")
+  downloadCount Int       @default(0) @map("download_count")
+
+  @@index([token])
+  @@index([expiresAt])
+  @@map("share_links")
+}
+
+model Tag {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  createdAt DateTime  @default(now()) @map("created_at")
+  fileTags  FileTag[]
+
+  @@unique([userId, name])
+  @@map("tags")
+}
+
+model FileTag {
+  fileAssetId String    @map("file_asset_id") @db.Uuid
+  tagId       String    @map("tag_id") @db.Uuid
+  fileAsset   FileAsset @relation(fields: [fileAssetId], references: [id], onDelete: Cascade)
+  tag         Tag       @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  @@id([fileAssetId, tagId])
+  @@map("file_tags")
+}

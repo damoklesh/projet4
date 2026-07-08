@@ -1,0 +1,13 @@
+{
+  "name": "@datashare/shared",
+  "version": "0.1.0",
+  "private": true,
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "lint": "eslint \"src/**/*.ts\"",
+    "test": "echo \"No shared tests yet\"",
+    "test:e2e": "echo \"No shared e2e tests\""
+  }
+}
