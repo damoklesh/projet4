@@ -1,5 +1,6 @@
 import { httpClient } from '../../services/http-client';
 import type {
+  DeleteFileAssetResponse,
   FileAssetHistoryQuery,
   FileAssetHistoryResult,
   FileAssetResponse,
@@ -42,8 +43,8 @@ export const fileAssetsApi = {
     return httpClient<FileAssetHistoryResult>(`/me/file-assets${qs ? `?${qs}` : ''}`);
   },
 
-  delete(fileAssetId: string): Promise<{ deleted: true }> {
-    return httpClient<{ deleted: true }>(`/file-assets/${fileAssetId}`, {
+  delete(fileAssetId: string): Promise<DeleteFileAssetResponse> {
+    return httpClient<DeleteFileAssetResponse>(`/file-assets/${fileAssetId}`, {
       method: 'DELETE',
     });
   },

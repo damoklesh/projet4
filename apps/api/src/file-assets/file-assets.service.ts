@@ -13,6 +13,7 @@ import { createReadStream, promises as fsPromises } from 'node:fs';
 import { extname } from 'node:path';
 import { ExpirationService } from '../expiration/expiration.service';
 import { StorageService } from '../storage/storage.service';
+import { DeleteFileAssetResponseDto } from './dto/delete-file-asset.response';
 import { FileAssetHistoryResponseDto } from './dto/file-asset-history-item.response';
 import { FileAssetResponseDto } from './dto/file-asset.response';
 import { FileAssetHistoryQueryDto } from './dto/file-asset-status-filter.dto';
@@ -150,8 +151,8 @@ export class FileAssetsService {
     };
   }
 
-  async delete(fileAssetId: string, ownerId: string): Promise<{ deleted: true }> {
-    const asset = await this.fileAssetsRepository.findOwnedById(fileAssetId, ownerId);
+  async delete(fileAssetId: string, ownerId: string): Promise<DeleteFileAssetResponseDto> {
+    const asset = await this.fileAssetsRepository.findById(fileAssetId);
 
     if (!asset) {
       throw new NotFoundException('File asset not found.');
@@ -164,7 +165,10 @@ export class FileAssetsService {
     await this.storageService.delete(asset.storagePath);
     await this.fileAssetsRepository.markDeleted(fileAssetId);
 
-    return { deleted: true };
+    return {
+      id: fileAssetId,
+      status: 'deleted',
+    };
   }
 
   private validateFile(file: UploadedFile): void {

@@ -4,9 +4,10 @@ import { FileHistoryTable } from '../components/file/FileHistoryTable';
 import { Button } from '../components/ui/Button';
 import { Callout } from '../components/ui/Callout';
 import { Input } from '../components/ui/Input';
+import { Modal } from '../components/ui/Modal';
 import { Select } from '../components/ui/Select';
 import { useFileAssetsStore } from '../features/file-assets/file-assets.store';
-import type { FileAssetSort, SortOrder } from '../features/file-assets/file-assets.types';
+import type { FileAssetHistoryItem, FileAssetSort, SortOrder } from '../features/file-assets/file-assets.types';
 import type { FileStatusFilter } from '@datashare/shared';
 
 export function HistoryPage() {
@@ -30,6 +31,7 @@ export function HistoryPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [currentPageSize, setCurrentPageSize] = useState(10);
   const [copyMessage, setCopyMessage] = useState<string | null>(null);
+  const [filePendingDeletion, setFilePendingDeletion] = useState<FileAssetHistoryItem | null>(null);
 
   useEffect(() => {
     void loadHistory({
@@ -49,6 +51,19 @@ export function HistoryPage() {
   async function handleCopyShareLink(url: string) {
     await navigator.clipboard.writeText(url);
     setCopyMessage('Share link copied.');
+  }
+
+  async function handleConfirmDelete() {
+    if (!filePendingDeletion) {
+      return;
+    }
+
+    try {
+      await deleteFile(filePendingDeletion.id);
+      setFilePendingDeletion(null);
+    } catch {
+      setFilePendingDeletion(null);
+    }
   }
 
   return (
@@ -147,7 +162,9 @@ export function HistoryPage() {
       <FileHistoryTable
         items={history}
         onCopyShareLink={(url) => void handleCopyShareLink(url)}
-        onDelete={(fileAssetId) => void deleteFile(fileAssetId)}
+        onDelete={(fileAssetId) => {
+          setFilePendingDeletion(history.find((item) => item.id === fileAssetId) ?? null);
+        }}
       />
       <div className="pagination-bar">
         <p className="muted">
@@ -174,6 +191,26 @@ export function HistoryPage() {
           </Button>
         </div>
       </div>
+      <Modal
+        onClose={() => setFilePendingDeletion(null)}
+        open={Boolean(filePendingDeletion)}
+        title="Delete file"
+      >
+        <div className="stack">
+          <p>
+            Delete {filePendingDeletion?.fileName}? This action is irreversible and the public share link will stop
+            working.
+          </p>
+          <div className="modal__actions">
+            <Button onClick={() => setFilePendingDeletion(null)} variant="secondary">
+              Cancel
+            </Button>
+            <Button disabled={isLoading} onClick={() => void handleConfirmDelete()} variant="danger">
+              Delete permanently
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </section>
   );
 }

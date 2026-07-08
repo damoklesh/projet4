@@ -139,6 +139,36 @@ describe('HistoryPage', () => {
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith('http://localhost:5173/share/share-token');
     expect(await screen.findByText(/share link copied/i)).toBeInTheDocument();
   });
+
+  it('asks for confirmation before deleting a file', async () => {
+    render(<HistoryPage />);
+
+    await userEvent.click(screen.getByRole('button', { name: /^delete$/i }));
+
+    expect(deleteFileMock).not.toHaveBeenCalled();
+    expect(screen.getByRole('dialog', { name: /delete file/i })).toBeInTheDocument();
+    expect(screen.getByText(/this action is irreversible/i)).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: /cancel/i }));
+    expect(deleteFileMock).not.toHaveBeenCalled();
+    expect(screen.queryByRole('dialog', { name: /delete file/i })).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: /^delete$/i }));
+    await userEvent.click(screen.getByRole('button', { name: /delete permanently/i }));
+
+    expect(deleteFileMock).toHaveBeenCalledWith('file-id');
+  });
+
+  it('displays authorization errors from failed deletion', () => {
+    storeState.current = {
+      ...storeState.current!,
+      error: 'You can delete only your own files.',
+    };
+
+    render(<HistoryPage />);
+
+    expect(screen.getByText(/delete only your own files/i)).toBeInTheDocument();
+  });
 });
 
 function createHistoryItem() {

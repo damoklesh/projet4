@@ -17,7 +17,7 @@ describe('GET /me/file-assets', () => {
   const repository = {
     createWithShareLink: jest.fn(),
     listForOwner: jest.fn(),
-    findOwnedById: jest.fn(),
+    findById: jest.fn(),
     markDeleted: jest.fn(),
   };
   const storage = {

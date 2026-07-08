@@ -127,11 +127,10 @@ export class FileAssetsRepository {
     return { items, total };
   }
 
-  findOwnedById(fileAssetId: string, ownerId: string) {
-    return this.prisma.fileAsset.findFirst({
+  findById(fileAssetId: string) {
+    return this.prisma.fileAsset.findUnique({
       where: {
         id: fileAssetId,
-        ownerId,
       },
       include: {
         shareLink: true,

@@ -65,11 +65,19 @@ export const useFileAssetsStore = create<FileAssetsState>((set) => ({
   },
 
   deleteFile: async (fileAssetId) => {
-    await fileAssetsApi.delete(fileAssetId);
-    set((state) => ({
-      history: state.history.filter((item) => item.id !== fileAssetId),
-      totalItems: Math.max(0, state.totalItems - 1),
-    }));
+    set({ isLoading: true, error: null });
+
+    try {
+      await fileAssetsApi.delete(fileAssetId);
+      set((state) => ({
+        history: state.history.filter((item) => item.id !== fileAssetId),
+        totalItems: Math.max(0, state.totalItems - 1),
+        isLoading: false,
+      }));
+    } catch (error) {
+      set({ error: error instanceof Error ? error.message : 'File deletion failed', isLoading: false });
+      throw error;
+    }
   },
 
   clearLastUpload: () => set({ lastUpload: null }),

@@ -1,4 +1,10 @@
-import { BadRequestException, PayloadTooLargeException, UnsupportedMediaTypeException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  NotFoundException,
+  PayloadTooLargeException,
+  UnsupportedMediaTypeException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import bcrypt from 'bcryptjs';
 import { mkdir, writeFile } from 'node:fs/promises';
@@ -248,3 +254,84 @@ describe('FileAssetsService.create', () => {
     };
   }
 });
+
+describe('FileAssetsService.delete', () => {
+  const config = {
+    get: jest.fn(),
+  } as unknown as jest.Mocked<ConfigService>;
+  const expirationService = new ExpirationService();
+  const repository = {
+    findById: jest.fn(),
+    markDeleted: jest.fn(),
+  } as unknown as jest.Mocked<Pick<FileAssetsRepository, 'findById' | 'markDeleted'>>;
+  const storage = {
+    delete: jest.fn(),
+  } as unknown as jest.Mocked<Pick<StorageService, 'delete'>>;
+
+  let service: FileAssetsService;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    service = new FileAssetsService(
+      config,
+      expirationService,
+      repository as unknown as FileAssetsRepository,
+      storage as unknown as StorageService,
+    );
+  });
+
+  it('deletes the physical file and marks an owned file as deleted', async () => {
+    repository.findById.mockResolvedValue(createPersistedFileAsset({ ownerId: 'user-id' }));
+    storage.delete.mockResolvedValue(undefined);
+    repository.markDeleted.mockResolvedValue(createPersistedFileAsset({ ownerId: 'user-id' }));
+
+    await expect(service.delete('file-id', 'user-id')).resolves.toEqual({
+      id: 'file-id',
+      status: 'deleted',
+    });
+
+    expect(storage.delete).toHaveBeenCalledWith('/storage/document.pdf');
+    expect(repository.markDeleted).toHaveBeenCalledWith('file-id');
+  });
+
+  it('rejects deletion when the authenticated user is not the owner', async () => {
+    repository.findById.mockResolvedValue(createPersistedFileAsset({ ownerId: 'other-user-id' }));
+
+    await expect(service.delete('file-id', 'user-id')).rejects.toBeInstanceOf(ForbiddenException);
+
+    expect(storage.delete).not.toHaveBeenCalled();
+    expect(repository.markDeleted).not.toHaveBeenCalled();
+  });
+
+  it('returns not found when the file id does not exist', async () => {
+    repository.findById.mockResolvedValue(null);
+
+    await expect(service.delete('missing-file-id', 'user-id')).rejects.toBeInstanceOf(NotFoundException);
+
+    expect(storage.delete).not.toHaveBeenCalled();
+    expect(repository.markDeleted).not.toHaveBeenCalled();
+  });
+});
+
+function createPersistedFileAsset(input: { ownerId: string }) {
+  return {
+    id: 'file-id',
+    ownerId: input.ownerId,
+    originalName: 'document.pdf',
+    storageName: 'stored-document.pdf',
+    storagePath: '/storage/document.pdf',
+    mimeType: 'application/pdf',
+    size: BigInt(12),
+    uploadedAt: new Date('2026-07-08T10:30:00.000Z'),
+    deletedAt: null,
+    shareLink: {
+      id: 'share-id',
+      fileAssetId: 'file-id',
+      token: 'share-token',
+      passwordHash: null,
+      createdAt: new Date('2026-07-08T10:30:00.000Z'),
+      expiresAt: new Date('2099-01-01T00:00:00.000Z'),
+      downloadCount: 0,
+    },
+  };
+}

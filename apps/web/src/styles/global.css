@@ -330,6 +330,13 @@ h2 {
   justify-content: space-between;
 }
 
+.modal__actions {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
 .muted {
   color: var(--color-muted);
 }
@@ -365,7 +372,8 @@ h2 {
 
   .pagination-bar,
   .pagination-actions,
-  .table-actions {
+  .table-actions,
+  .modal__actions {
     align-items: stretch;
     flex-direction: column;
   }

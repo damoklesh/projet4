@@ -75,4 +75,17 @@ describe('fileAssetsApi', () => {
       '/me/file-assets?page=2&pageSize=10&status=expired&tag=facture&sort=uploadedAt&order=desc',
     );
   });
+
+  it('deletes a file asset through the US06 endpoint', async () => {
+    vi.mocked(httpClient).mockResolvedValue({
+      id: 'file-id',
+      status: 'deleted',
+    });
+
+    await fileAssetsApi.delete('file-id');
+
+    expect(httpClient).toHaveBeenCalledWith('/file-assets/file-id', {
+      method: 'DELETE',
+    });
+  });
 });

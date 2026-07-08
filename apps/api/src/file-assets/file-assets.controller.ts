@@ -17,6 +17,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { ApiResponse } from '../common/types/api-response.type';
 import type { AuthenticatedUser } from '../common/types/authenticated-user.type';
+import { DeleteFileAssetResponseDto } from './dto/delete-file-asset.response';
 import { FileAssetHistoryResponseDto } from './dto/file-asset-history-item.response';
 import { FileAssetResponseDto } from './dto/file-asset.response';
 import { FileAssetHistoryQueryDto } from './dto/file-asset-status-filter.dto';
@@ -87,10 +88,14 @@ export class FileAssetsController {
   @Delete('file-assets/:fileAssetId')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  delete(
+  async delete(
     @Param('fileAssetId') fileAssetId: string,
     @CurrentUser() user: AuthenticatedUser,
-  ): Promise<{ deleted: true }> {
-    return this.fileAssetsService.delete(fileAssetId, user.id);
+  ): Promise<ApiResponse<DeleteFileAssetResponseDto>> {
+    return {
+      status: 'success',
+      message: 'Fichier supprimÃ© avec succÃ¨s.',
+      data: await this.fileAssetsService.delete(fileAssetId, user.id),
+    };
   }
 }

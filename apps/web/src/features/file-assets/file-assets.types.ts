@@ -39,6 +39,11 @@ export interface FileAssetResponse {
   shareLink: UploadedShareLink;
 }
 
+export interface DeleteFileAssetResponse {
+  id: string;
+  status: 'deleted';
+}
+
 export interface FileAssetHistoryItem {
   id: string;
   fileName: string;
