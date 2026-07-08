@@ -146,6 +146,7 @@ describe('GET /me/file-assets', () => {
     expect(JSON.stringify(response.body)).not.toContain('storagePath');
     expect(JSON.stringify(response.body)).not.toContain('passwordHash');
     expect(JSON.stringify(response.body)).not.toContain('ownerId');
+    expect(response.headers['cache-control']).toBe('no-store');
   });
 
   it('uses query defaults from US05', async () => {

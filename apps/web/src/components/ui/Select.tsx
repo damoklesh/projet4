@@ -9,8 +9,10 @@ export function Select({ id, label, options, ...props }: SelectProps) {
   const selectId = id ?? props.name ?? label;
 
   return (
-    <label className="field" htmlFor={selectId}>
-      <span className="field__label">{label}</span>
+    <div className="field">
+      <label className="field__label" htmlFor={selectId}>
+        {label}
+      </label>
       <select id={selectId} className="input" {...props}>
         {options.map((option) => (
           <option key={option.value} value={option.value}>
@@ -18,6 +20,6 @@ export function Select({ id, label, options, ...props }: SelectProps) {
           </option>
         ))}
       </select>
-    </label>
+    </div>
   );
 }

@@ -26,8 +26,26 @@ const emptyAuthState = {
   isAuthenticated: false,
 };
 
+function getInitialAuthState() {
+  if (typeof window === 'undefined') {
+    return emptyAuthState;
+  }
+
+  const session = getStoredAuthSession();
+
+  if (!session) {
+    return emptyAuthState;
+  }
+
+  return {
+    accessToken: session.accessToken,
+    user: session.user,
+    isAuthenticated: true,
+  };
+}
+
 export const useAuthStore = create<AuthState>((set) => ({
-  ...emptyAuthState,
+  ...getInitialAuthState(),
   isLoading: false,
   error: null,
 

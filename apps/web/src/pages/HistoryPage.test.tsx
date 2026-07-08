@@ -2,9 +2,10 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { HistoryPage } from './HistoryPage';
 
-const { deleteFileMock, loadHistoryMock, storeState } = vi.hoisted(() => ({
+const { deleteFileMock, loadHistoryMock, logoutMock, storeState } = vi.hoisted(() => ({
   deleteFileMock: vi.fn(),
   loadHistoryMock: vi.fn(),
+  logoutMock: vi.fn(),
   storeState: {
     current: undefined as
       | {
@@ -44,6 +45,13 @@ vi.mock('../features/file-assets/file-assets.store', () => ({
   ),
 }));
 
+vi.mock('../features/auth/auth.store', () => ({
+  useAuthStore: vi.fn(
+    (selector: (state: { logout: ReturnType<typeof vi.fn>; user: { email: string } }) => unknown) =>
+      selector({ logout: logoutMock, user: { email: 'user@example.com' } }),
+  ),
+}));
+
 describe('HistoryPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -70,16 +78,14 @@ describe('HistoryPage', () => {
   it('loads and displays authenticated file history', async () => {
     render(<HistoryPage />);
 
-    expect(screen.getByRole('heading', { name: /history/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /mes fichiers/i })).toBeInTheDocument();
     expect(screen.getByText('document.pdf')).toBeInTheDocument();
-    expect(screen.getByText('facture')).toBeInTheDocument();
-    expect(screen.getByText('Yes')).toBeInTheDocument();
+    expect(screen.getByText(/protege/i)).toBeInTheDocument();
     await waitFor(() => {
       expect(loadHistoryMock).toHaveBeenCalledWith({
         page: 1,
         pageSize: 10,
         status: 'active',
-        tag: undefined,
         sort: 'uploadedAt',
         order: 'desc',
       });
@@ -96,27 +102,22 @@ describe('HistoryPage', () => {
 
     render(<HistoryPage />);
 
-    expect(screen.getByText(/no files match/i)).toBeInTheDocument();
-    expect(screen.getByText(/0 files/i)).toBeInTheDocument();
+    expect(screen.getByText(/aucun fichier/i)).toBeInTheDocument();
+    expect(screen.getByText(/0 fichiers/i)).toBeInTheDocument();
   });
 
-  it('applies status, tag, sorting and page size filters', async () => {
+  it('applies the segmented status filter', async () => {
     render(<HistoryPage />);
 
-    await userEvent.selectOptions(screen.getByLabelText(/status/i), 'expired');
-    await userEvent.type(screen.getByLabelText(/tag/i), 'facture');
-    await userEvent.selectOptions(screen.getByLabelText(/sort/i), 'size');
-    await userEvent.selectOptions(screen.getByLabelText(/order/i), 'asc');
-    await userEvent.selectOptions(screen.getByLabelText(/page size/i), '25');
+    await userEvent.click(screen.getByRole('radio', { name: /expire/i }));
 
     await waitFor(() => {
       expect(loadHistoryMock).toHaveBeenLastCalledWith({
         page: 1,
-        pageSize: 25,
+        pageSize: 10,
         status: 'expired',
-        tag: 'facture',
-        sort: 'size',
-        order: 'asc',
+        sort: 'uploadedAt',
+        order: 'desc',
       });
     });
   });
@@ -124,7 +125,7 @@ describe('HistoryPage', () => {
   it('supports pagination and copy link actions', async () => {
     render(<HistoryPage />);
 
-    await userEvent.click(screen.getByRole('button', { name: /next/i }));
+    await userEvent.click(screen.getByRole('button', { name: /suivant/i }));
     await waitFor(() => {
       expect(loadHistoryMock).toHaveBeenLastCalledWith(
         expect.objectContaining({
@@ -134,27 +135,27 @@ describe('HistoryPage', () => {
       );
     });
 
-    await userEvent.click(screen.getByRole('button', { name: /copy link/i }));
+    await userEvent.click(screen.getByRole('button', { name: /copier le lien/i }));
 
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith('http://localhost:5173/share/share-token');
-    expect(await screen.findByText(/share link copied/i)).toBeInTheDocument();
+    expect(await screen.findByText(/lien copie/i)).toBeInTheDocument();
   });
 
   it('asks for confirmation before deleting a file', async () => {
     render(<HistoryPage />);
 
-    await userEvent.click(screen.getByRole('button', { name: /^delete$/i }));
+    await userEvent.click(screen.getByRole('button', { name: /supprimer document.pdf/i }));
 
     expect(deleteFileMock).not.toHaveBeenCalled();
-    expect(screen.getByRole('dialog', { name: /delete file/i })).toBeInTheDocument();
-    expect(screen.getByText(/this action is irreversible/i)).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: /supprimer le fichier/i })).toBeInTheDocument();
+    expect(screen.getByText(/cette action est irreversible/i)).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole('button', { name: /cancel/i }));
+    await userEvent.click(screen.getByRole('button', { name: /annuler/i }));
     expect(deleteFileMock).not.toHaveBeenCalled();
-    expect(screen.queryByRole('dialog', { name: /delete file/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('dialog', { name: /supprimer le fichier/i })).not.toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole('button', { name: /^delete$/i }));
-    await userEvent.click(screen.getByRole('button', { name: /delete permanently/i }));
+    await userEvent.click(screen.getByRole('button', { name: /supprimer document.pdf/i }));
+    await userEvent.click(screen.getByRole('button', { name: /^supprimer$/i }));
 
     expect(deleteFileMock).toHaveBeenCalledWith('file-id');
   });

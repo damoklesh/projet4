@@ -41,11 +41,10 @@ describe('ShareLinkPage', () => {
   it('loads and displays public metadata with a password field when required', async () => {
     renderShareLinkPage();
 
-    expect(await screen.findByRole('heading', { name: 'document.pdf' })).toBeInTheDocument();
-    expect(screen.getByText('application/pdf')).toBeInTheDocument();
-    expect(screen.getByText('2.0 KB')).toBeInTheDocument();
-    expect(screen.getByText('Password required')).toBeInTheDocument();
-    expect(screen.getByLabelText(/password/i)).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /telecharger un fichier/i })).toBeInTheDocument();
+    expect(screen.getByText('document.pdf')).toBeInTheDocument();
+    expect(screen.getByText('2.0 Ko')).toBeInTheDocument();
+    expect(screen.getByLabelText(/mot de passe/i)).toBeInTheDocument();
     expect(shareLinksApi.metadata).toHaveBeenCalledWith('public-token');
   });
 
@@ -61,16 +60,16 @@ describe('ShareLinkPage', () => {
 
     renderShareLinkPage();
 
-    expect(await screen.findByText(/share link has expired/i)).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /download/i })).not.toBeInTheDocument();
+    expect(await screen.findByText(/plus disponible ou le lien a expire/i)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /telecharger/i })).not.toBeInTheDocument();
   });
 
   it('submits the password and saves the returned binary file', async () => {
     renderShareLinkPage();
 
-    await screen.findByRole('heading', { name: 'document.pdf' });
-    await userEvent.type(screen.getByLabelText(/password/i), 'secret123');
-    await userEvent.click(screen.getByRole('button', { name: /download/i }));
+    await screen.findByRole('heading', { name: /telecharger un fichier/i });
+    await userEvent.type(screen.getByLabelText(/mot de passe/i), 'secret123');
+    await userEvent.click(screen.getByRole('button', { name: /telecharger/i }));
 
     expect(shareLinksApi.download).toHaveBeenCalledWith({
       token: 'public-token',
@@ -78,7 +77,7 @@ describe('ShareLinkPage', () => {
     });
     expect(URL.createObjectURL).toHaveBeenCalledWith(expect.any(Blob));
     expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:download-url');
-    expect(await screen.findByText(/download started/i)).toBeInTheDocument();
+    expect(await screen.findByText(/telechargement demarre/i)).toBeInTheDocument();
   });
 });
 

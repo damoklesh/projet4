@@ -1,16 +1,22 @@
-import { ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
+import { ChevronLeft, ChevronRight, LogOut, Menu, RefreshCw, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { FileHistoryTable } from '../components/file/FileHistoryTable';
+import type { FileStatusFilter } from '@datashare/shared';
+import { FileHistoryList } from '../components/file/FileHistoryList';
+import { AppShell } from '../components/layout/AppShell';
+import { MobileDrawer } from '../components/layout/MobileDrawer';
 import { Button } from '../components/ui/Button';
 import { Callout } from '../components/ui/Callout';
-import { Input } from '../components/ui/Input';
 import { Modal } from '../components/ui/Modal';
-import { Select } from '../components/ui/Select';
+import { SegmentedControl } from '../components/ui/SegmentedControl';
+import { useAuthStore } from '../features/auth/auth.store';
 import { useFileAssetsStore } from '../features/file-assets/file-assets.store';
-import type { FileAssetHistoryItem, FileAssetSort, SortOrder } from '../features/file-assets/file-assets.types';
-import type { FileStatusFilter } from '@datashare/shared';
+import type { FileAssetHistoryItem } from '../features/file-assets/file-assets.types';
 
 export function HistoryPage() {
+  const { logout, user } = useAuthStore((state) => ({
+    logout: state.logout,
+    user: state.user,
+  }));
   const { deleteFile, error, history, isLoading, loadHistory, page, pageSize, totalItems, totalPages } = useFileAssetsStore(
     (state) => ({
       deleteFile: state.deleteFile,
@@ -25,32 +31,24 @@ export function HistoryPage() {
     }),
   );
   const [status, setStatus] = useState<FileStatusFilter>('active');
-  const [tag, setTag] = useState('');
-  const [sort, setSort] = useState<FileAssetSort>('uploadedAt');
-  const [order, setOrder] = useState<SortOrder>('desc');
   const [currentPage, setCurrentPage] = useState(1);
-  const [currentPageSize, setCurrentPageSize] = useState(10);
   const [copyMessage, setCopyMessage] = useState<string | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const [filePendingDeletion, setFilePendingDeletion] = useState<FileAssetHistoryItem | null>(null);
 
   useEffect(() => {
     void loadHistory({
       page: currentPage,
-      pageSize: currentPageSize,
+      pageSize: 10,
       status,
-      tag: tag.trim() || undefined,
-      sort,
-      order,
+      sort: 'uploadedAt',
+      order: 'desc',
     });
-  }, [currentPage, currentPageSize, loadHistory, order, sort, status, tag]);
-
-  function resetToFirstPage() {
-    setCurrentPage(1);
-  }
+  }, [currentPage, loadHistory, status]);
 
   async function handleCopyShareLink(url: string) {
     await navigator.clipboard.writeText(url);
-    setCopyMessage('Share link copied.');
+    setCopyMessage('Lien copie.');
   }
 
   async function handleConfirmDelete() {
@@ -66,151 +64,139 @@ export function HistoryPage() {
     }
   }
 
+  function handleLogout() {
+    logout();
+    window.location.assign('/login');
+  }
+
   return (
-    <section className="workspace">
-      <div className="workspace__header">
-        <h1>History</h1>
+    <AppShell>
+      <div className="history-topbar">
         <Button
-          icon={<RefreshCw size={16} />}
+          aria-expanded={drawerOpen}
+          aria-label="Ouvrir le menu"
+          className="mobile-menu-button"
+          icon={<Menu size={14} />}
+          onClick={() => setDrawerOpen(true)}
+          size="sm"
+          variant="ghost"
+        >
+          Menu
+        </Button>
+        <span className="header__user">{user?.email}</span>
+        <Button icon={<LogOut size={13} />} onClick={handleLogout} size="sm" variant="dark">
+          Deconnexion
+        </Button>
+      </div>
+
+      <div className="history-header">
+        <h1 className="history-title">Mes fichiers</h1>
+        <Button
+          aria-label="Actualiser"
+          icon={<RefreshCw size={13} />}
           onClick={() =>
             void loadHistory({
               page: currentPage,
-              pageSize: currentPageSize,
+              pageSize: 10,
               status,
-              tag: tag.trim() || undefined,
-              sort,
-              order,
+              sort: 'uploadedAt',
+              order: 'desc',
             })
           }
-          variant="secondary"
+          size="sm"
+          variant="ghost"
         >
-          Refresh
+          Actualiser
         </Button>
       </div>
-      {error ? <Callout tone="danger">{error}</Callout> : null}
-      {copyMessage ? <Callout tone="success">{copyMessage}</Callout> : null}
-      <div className="toolbar">
-        <Select
-          label="Status"
-          name="status"
-          onChange={(event) => {
-            setStatus(event.target.value as FileStatusFilter);
-            resetToFirstPage();
+
+      <div className="history-toolbar">
+        <SegmentedControl
+          ariaLabel="Filtrer les fichiers"
+          onChange={(value) => {
+            setStatus(value);
+            setCurrentPage(1);
           }}
           options={[
-            { label: 'Active', value: 'active' },
-            { label: 'Expired', value: 'expired' },
-            { label: 'All', value: 'all' },
+            { label: 'Tous', value: 'all' },
+            { label: 'Actifs', value: 'active' },
+            { label: 'Expire', value: 'expired' },
           ]}
           value={status}
         />
-        <Input
-          label="Tag"
-          maxLength={30}
-          name="tag"
-          onChange={(event) => {
-            setTag(event.target.value);
-            resetToFirstPage();
-          }}
-          placeholder="facture"
-          value={tag}
-        />
-        <Select
-          label="Sort"
-          name="sort"
-          onChange={(event) => {
-            setSort(event.target.value as FileAssetSort);
-            resetToFirstPage();
-          }}
-          options={[
-            { label: 'Uploaded', value: 'uploadedAt' },
-            { label: 'Expires', value: 'expiresAt' },
-            { label: 'Name', value: 'fileName' },
-            { label: 'Size', value: 'size' },
-          ]}
-          value={sort}
-        />
-        <Select
-          label="Order"
-          name="order"
-          onChange={(event) => {
-            setOrder(event.target.value as SortOrder);
-            resetToFirstPage();
-          }}
-          options={[
-            { label: 'Descending', value: 'desc' },
-            { label: 'Ascending', value: 'asc' },
-          ]}
-          value={order}
-        />
-        <Select
-          label="Page size"
-          name="pageSize"
-          onChange={(event) => {
-            setCurrentPageSize(Number(event.target.value));
-            resetToFirstPage();
-          }}
-          options={[
-            { label: '10', value: '10' },
-            { label: '25', value: '25' },
-            { label: '50', value: '50' },
-            { label: '100', value: '100' },
-          ]}
-          value={String(currentPageSize)}
-        />
       </div>
-      <FileHistoryTable
+
+      {error ? <Callout tone="danger">{error}</Callout> : null}
+      {copyMessage ? <Callout tone="success">{copyMessage}</Callout> : null}
+
+      <FileHistoryList
         items={history}
         onCopyShareLink={(url) => void handleCopyShareLink(url)}
         onDelete={(fileAssetId) => {
           setFilePendingDeletion(history.find((item) => item.id === fileAssetId) ?? null);
         }}
       />
+
       <div className="pagination-bar">
         <p className="muted">
           {isLoading
-            ? 'Loading...'
-            : `${totalItems} files, page ${page} of ${Math.max(totalPages, 1)}, ${pageSize} per page`}
+            ? 'Chargement...'
+            : `${totalItems} fichiers, page ${page} sur ${Math.max(totalPages, 1)}, ${pageSize} par page`}
         </p>
         <div className="pagination-actions">
           <Button
             disabled={currentPage <= 1 || isLoading}
-            icon={<ChevronLeft size={16} />}
+            icon={<ChevronLeft size={13} />}
             onClick={() => setCurrentPage((value) => Math.max(1, value - 1))}
-            variant="secondary"
+            size="sm"
+            variant="primary"
           >
-            Previous
+            Precedent
           </Button>
           <Button
             disabled={currentPage >= totalPages || totalPages === 0 || isLoading}
-            icon={<ChevronRight size={16} />}
+            icon={<ChevronRight size={13} />}
             onClick={() => setCurrentPage((value) => value + 1)}
-            variant="secondary"
+            size="sm"
+            variant="primary"
           >
-            Next
+            Suivant
           </Button>
         </div>
       </div>
-      <Modal
-        onClose={() => setFilePendingDeletion(null)}
-        open={Boolean(filePendingDeletion)}
-        title="Delete file"
-      >
+
+      <MobileDrawer onClose={() => setDrawerOpen(false)} open={drawerOpen}>
+        <div className="modal__header">
+          <a className="history-sidebar__brand" href="/upload">
+            DataShare
+          </a>
+          <Button aria-label="Fermer le menu" icon={<X size={13} />} onClick={() => setDrawerOpen(false)} size="sm" variant="dark">
+            Fermer
+          </Button>
+        </div>
+        <nav className="history-sidebar__nav" aria-label="Navigation espace utilisateur">
+          <a className="history-sidebar__item" href="/history">
+            Mes fichiers
+          </a>
+        </nav>
+      </MobileDrawer>
+
+      <Modal onClose={() => setFilePendingDeletion(null)} open={Boolean(filePendingDeletion)} title="Supprimer le fichier">
         <div className="stack">
           <p>
-            Delete {filePendingDeletion?.fileName}? This action is irreversible and the public share link will stop
-            working.
+            Supprimer {filePendingDeletion?.fileName} ? Cette action est irreversible et le lien public ne fonctionnera
+            plus.
           </p>
           <div className="modal__actions">
-            <Button onClick={() => setFilePendingDeletion(null)} variant="secondary">
-              Cancel
+            <Button onClick={() => setFilePendingDeletion(null)} size="sm" variant="secondary">
+              Annuler
             </Button>
-            <Button disabled={isLoading} onClick={() => void handleConfirmDelete()} variant="danger">
-              Delete permanently
+            <Button disabled={isLoading} onClick={() => void handleConfirmDelete()} size="sm" variant="danger">
+              Supprimer
             </Button>
           </div>
         </div>
       </Modal>
-    </section>
+    </AppShell>
   );
 }

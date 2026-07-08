@@ -1,8 +1,10 @@
 import { LogIn } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { PublicPageLayout } from '../components/layout/PublicPageLayout';
 import { Button } from '../components/ui/Button';
 import { Callout } from '../components/ui/Callout';
+import { Card } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
 import { useAuthStore } from '../features/auth/auth.store';
 
@@ -37,27 +39,36 @@ export function LoginPage() {
   }
 
   return (
-    <section className="panel panel--narrow">
-      <h1>Login</h1>
-      {validationError ? <Callout tone="danger">{validationError}</Callout> : null}
-      {error ? <Callout tone="danger">{error}</Callout> : null}
-      <form className="stack" noValidate onSubmit={handleSubmit}>
-        <Input label="Email" name="email" onChange={(event) => setEmail(event.target.value)} type="email" value={email} />
-        <Input
-          label="Password"
-          name="password"
-          onChange={(event) => setPassword(event.target.value)}
-          type="password"
-          value={password}
-        />
-        <Button disabled={isLoading} icon={<LogIn size={16} />} type="submit">
-          Login
-        </Button>
-      </form>
-      <p>
-        <Link to="/register">Create an account</Link>
-      </p>
-    </section>
+    <PublicPageLayout>
+      <Card title="Connexion">
+        {validationError ? <Callout tone="danger">{validationError}</Callout> : null}
+        {error ? <Callout tone="danger">{error}</Callout> : null}
+        <form className="stack" noValidate onSubmit={handleSubmit}>
+          <Input
+            label="Email"
+            name="email"
+            onChange={(event) => setEmail(event.target.value)}
+            placeholder="Saisissez votre email..."
+            type="email"
+            value={email}
+          />
+          <Input
+            label="Mot de passe"
+            name="password"
+            onChange={(event) => setPassword(event.target.value)}
+            placeholder="Saisissez votre mot de passe..."
+            type="password"
+            value={password}
+          />
+          <Link className="auth-switch" to="/register">
+            Creer un compte
+          </Link>
+          <Button disabled={isLoading} icon={<LogIn size={13} />} size="sm" type="submit" variant="primary">
+            Connexion
+          </Button>
+        </form>
+      </Card>
+    </PublicPageLayout>
   );
 }
 

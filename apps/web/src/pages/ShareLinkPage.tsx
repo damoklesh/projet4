@@ -1,9 +1,7 @@
-import { Download } from 'lucide-react';
 import { useEffect, useState, type FormEvent } from 'react';
 import { useParams } from 'react-router-dom';
-import { Button } from '../components/ui/Button';
-import { Callout } from '../components/ui/Callout';
-import { Input } from '../components/ui/Input';
+import { DownloadCard } from '../components/file/DownloadCard';
+import { PublicPageLayout } from '../components/layout/PublicPageLayout';
 import { Spinner } from '../components/ui/Spinner';
 import { shareLinksApi } from '../features/share-links/share-links.api';
 import type { ShareLinkMetadata } from '../features/share-links/share-links.types';
@@ -41,10 +39,10 @@ export function ShareLinkPage() {
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement('a');
       anchor.href = url;
-      anchor.download = metadata?.fileName ?? 'download';
+      anchor.download = metadata?.fileName ?? 'telechargement';
       anchor.click();
       URL.revokeObjectURL(url);
-      setDownloadMessage('Download started.');
+      setDownloadMessage('Telechargement demarre.');
     } catch (err) {
       setError(getShareLinkErrorMessage(err));
     } finally {
@@ -52,89 +50,35 @@ export function ShareLinkPage() {
     }
   }
 
-  if (isLoading) {
-    return <Spinner />;
-  }
-
   return (
-    <section className="panel">
-      {error ? <Callout tone="danger">{error}</Callout> : null}
-      {downloadMessage ? <Callout tone="success">{downloadMessage}</Callout> : null}
-      {metadata ? (
-        <>
-          <h1>{metadata.fileName}</h1>
-          <dl className="metadata-list">
-            <div>
-              <dt>Status</dt>
-              <dd>{metadata.status}</dd>
-            </div>
-            <div>
-              <dt>Type</dt>
-              <dd>{metadata.mimeType}</dd>
-            </div>
-            <div>
-              <dt>Size</dt>
-              <dd>{formatFileSize(metadata.size)}</dd>
-            </div>
-            <div>
-              <dt>Expires</dt>
-              <dd>{new Date(metadata.expiresAt).toLocaleString()}</dd>
-            </div>
-            <div>
-              <dt>Protection</dt>
-              <dd>{metadata.isPasswordProtected ? 'Password required' : 'No password'}</dd>
-            </div>
-          </dl>
-          <form className="stack" onSubmit={handleDownload}>
-            {metadata.isPasswordProtected ? (
-              <Input
-                label="Password"
-                name="password"
-                onChange={(event) => setPassword(event.target.value)}
-                type="password"
-                value={password}
-              />
-            ) : null}
-            <Button
-              disabled={metadata.status !== 'active' || isDownloading}
-              icon={<Download size={16} />}
-              type="submit"
-            >
-              {isDownloading ? 'Downloading...' : 'Download'}
-            </Button>
-          </form>
-        </>
-      ) : null}
-    </section>
+    <PublicPageLayout>
+      {isLoading ? (
+        <Spinner />
+      ) : (
+        <DownloadCard
+          error={error}
+          isDownloading={isDownloading}
+          metadata={metadata}
+          onDownload={handleDownload}
+          password={password}
+          setPassword={setPassword}
+          successMessage={downloadMessage}
+        />
+      )}
+    </PublicPageLayout>
   );
 }
 
 function getShareLinkErrorMessage(error: unknown): string {
   if (error instanceof ApiError) {
-    if (error.status === 404) {
-      return 'This share link does not exist.';
-    }
-
-    if (error.status === 410) {
-      return error.message || 'This share link is no longer available.';
+    if (error.status === 404 || error.status === 410) {
+      return "Ce fichier n'est plus disponible ou le lien a expire";
     }
 
     if (error.status === 401) {
-      return 'A valid password is required.';
+      return 'Mot de passe incorrect';
     }
   }
 
-  return error instanceof Error ? error.message : 'Share link request failed.';
-}
-
-function formatFileSize(size: number): string {
-  if (size < 1024) {
-    return `${size} B`;
-  }
-
-  if (size < 1024 * 1024) {
-    return `${(size / 1024).toFixed(1)} KB`;
-  }
-
-  return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+  return error instanceof Error ? error.message : 'La demande de lien a echoue.';
 }

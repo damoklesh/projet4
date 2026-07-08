@@ -15,14 +15,7 @@ export const router = createBrowserRouter([
       { path: '/', element: <HomePage /> },
       { path: '/login', element: <LoginPage /> },
       { path: '/register', element: <RegisterPage /> },
-      {
-        path: '/upload',
-        element: (
-          <ProtectedRoute>
-            <UploadPage />
-          </ProtectedRoute>
-        ),
-      },
+      { path: '/upload', element: <UploadPage /> },
       { path: '/s/:token', element: <ShareLinkPage /> },
       { path: '/share/:token', element: <ShareLinkPage /> },
       {

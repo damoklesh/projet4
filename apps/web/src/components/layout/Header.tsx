@@ -1,5 +1,4 @@
-import { LogOut, Upload } from 'lucide-react';
-import { Link, NavLink } from 'react-router-dom';
+import { LogOut } from 'lucide-react';
 import { useAuthStore } from '../../features/auth/auth.store';
 import { Button } from '../ui/Button';
 
@@ -9,37 +8,35 @@ export function Header() {
     logout: state.logout,
     user: state.user,
   }));
+  const isHistory = typeof window !== 'undefined' && window.location.pathname.startsWith('/history');
+
+  function handleLogout() {
+    logout();
+    window.location.assign('/login');
+  }
 
   return (
     <header className="header">
-      <Link className="header__brand" to="/upload">
+      <a className="header__brand" href="/upload">
         DataShare
-      </Link>
-      <nav className="header__nav" aria-label="Primary navigation">
-        <NavLink to="/upload">Upload</NavLink>
-        {isAuthenticated ? <NavLink to="/history">History</NavLink> : null}
-      </nav>
+      </a>
       <div className="header__actions">
-        {isAuthenticated ? (
+        {isAuthenticated && isHistory ? (
           <>
             <span className="header__user">{user?.email}</span>
-            <Button icon={<LogOut size={16} />} onClick={logout} variant="secondary">
-              Sign out
+            <Button icon={<LogOut size={13} />} onClick={handleLogout} size="sm" variant="dark">
+              Deconnexion
             </Button>
           </>
+        ) : isAuthenticated ? (
+          <Button onClick={() => window.location.assign('/history')} size="sm" variant="dark">
+            Mon espace
+          </Button>
         ) : (
-          <>
-            <NavLink className="link-button" to="/login">
-              Login
-            </NavLink>
-            <NavLink className="link-button link-button--primary" to="/register">
-              Register
-            </NavLink>
-          </>
+          <Button onClick={() => window.location.assign('/login')} size="sm" variant="dark">
+            Se connecter
+          </Button>
         )}
-        <NavLink className="icon-link" title="Upload" to="/upload">
-          <Upload size={18} />
-        </NavLink>
       </div>
     </header>
   );

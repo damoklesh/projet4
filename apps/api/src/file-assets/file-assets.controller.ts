@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  Header,
   Param,
   Post,
   Query,
@@ -73,6 +74,7 @@ export class FileAssetsController {
 
   @Get('me/file-assets')
   @ApiBearerAuth()
+  @Header('Cache-Control', 'no-store')
   @UseGuards(JwtAuthGuard)
   async history(
     @CurrentUser() user: AuthenticatedUser,

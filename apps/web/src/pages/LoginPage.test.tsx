@@ -11,6 +11,9 @@ const { loginMock, storeState } = vi.hoisted(() => ({
           login: ReturnType<typeof vi.fn>;
           error: string | null;
           isLoading: boolean;
+          isAuthenticated: boolean;
+          logout: ReturnType<typeof vi.fn>;
+          user: null;
         }
       | undefined,
   },
@@ -30,14 +33,17 @@ describe('LoginPage', () => {
       login: loginMock,
       error: null,
       isLoading: false,
+      isAuthenticated: false,
+      logout: vi.fn(),
+      user: null,
     };
   });
 
   it('shows a clear client-side error when email is missing and does not submit', async () => {
     renderLoginPage();
 
-    await userEvent.type(screen.getByLabelText(/password/i), 'Password123');
-    await userEvent.click(screen.getByRole('button', { name: /login/i }));
+    await userEvent.type(screen.getByLabelText(/mot de passe/i), 'Password123');
+    await userEvent.click(screen.getByRole('button', { name: /^connexion$/i }));
 
     expect(await screen.findByText(/email est obligatoire/i)).toBeInTheDocument();
     expect(loginMock).not.toHaveBeenCalled();
@@ -47,7 +53,7 @@ describe('LoginPage', () => {
     renderLoginPage();
 
     await userEvent.type(screen.getByLabelText(/email/i), 'user@example.com');
-    await userEvent.click(screen.getByRole('button', { name: /login/i }));
+    await userEvent.click(screen.getByRole('button', { name: /^connexion$/i }));
 
     expect(await screen.findByText(/mot de passe est obligatoire/i)).toBeInTheDocument();
     expect(loginMock).not.toHaveBeenCalled();
@@ -57,8 +63,8 @@ describe('LoginPage', () => {
     renderLoginPage();
 
     await userEvent.type(screen.getByLabelText(/email/i), 'user@example.com');
-    await userEvent.type(screen.getByLabelText(/password/i), 'Password123');
-    await userEvent.click(screen.getByRole('button', { name: /login/i }));
+    await userEvent.type(screen.getByLabelText(/mot de passe/i), 'Password123');
+    await userEvent.click(screen.getByRole('button', { name: /^connexion$/i }));
 
     expect(loginMock).toHaveBeenCalledWith({
       email: 'user@example.com',
@@ -69,9 +75,8 @@ describe('LoginPage', () => {
 
   it('displays generic authentication errors clearly', () => {
     storeState.current = {
-      login: loginMock,
+      ...storeState.current!,
       error: 'Invalid email or password.',
-      isLoading: false,
     };
     renderLoginPage();
 
