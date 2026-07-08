@@ -11,31 +11,134 @@ DataShare is a full-stack TypeScript monorepo for temporary file upload and publ
 
 Binary files are stored on disk under `apps/api/storage/uploads/`. PostgreSQL stores metadata only.
 
-## Install
+## Launch The Application Locally
+
+### 1. Install prerequisites
+
+Make sure these tools are available:
+
+- Node.js `>=20.11`
+- npm
+- Docker Desktop or Docker Engine with Docker Compose
+
+### 2. Install dependencies
+
+From the repository root:
 
 ```bash
 npm install
 ```
 
-Copy `.env.example` to `.env` at the repository root, then adjust secrets and ports as needed.
+### 3. Create the environment file
 
-## Local Database
+Copy the example file:
+
+```bash
+cp .env.example .env
+```
+
+On Windows PowerShell:
+
+```powershell
+Copy-Item .env.example .env
+```
+
+For local development, the default `DATABASE_URL` matches the PostgreSQL service from `docker-compose.yml`:
+
+```env
+DATABASE_URL="postgresql://datashare:datashare@localhost:5432/datashare?schema=public"
+```
+
+### 4. Start PostgreSQL
+
+The compose file starts only PostgreSQL for local development:
 
 ```bash
 docker compose up -d postgres
-npm run prisma:generate -w apps/api
-npm run prisma:migrate -w apps/api
 ```
 
-## Development
+Optional health check:
+
+```bash
+docker compose ps
+```
+
+The database is exposed on `localhost:5432` with:
+
+- Database: `datashare`
+- User: `datashare`
+- Password: `datashare`
+
+### 5. Generate Prisma Client
+
+```bash
+npm run api:db:generate
+```
+
+### 6. Apply database migrations
+
+```bash
+npm run api:db:migrate:dev
+```
+
+This creates the DataShare metadata tables in PostgreSQL:
+
+- `users`
+- `file_assets`
+- `share_links`
+- `tags`
+- `file_tags`
+
+### 7. Start the backend API
+
+In one terminal:
+
+```bash
+npm run dev -w apps/api
+```
+
+The API runs at:
+
+- API: http://localhost:3000
+- Swagger/OpenAPI: http://localhost:3000/docs
+
+### 8. Start the frontend
+
+In a second terminal:
+
+```bash
+npm run dev -w apps/web
+```
+
+The web app runs at:
+
+- Web: http://localhost:5173
+
+### 9. Alternative: start API and web together
+
+After PostgreSQL is running and migrations are applied:
 
 ```bash
 npm run dev
 ```
 
-- API: http://localhost:3000
-- Swagger: http://localhost:3000/docs
-- Web: http://localhost:5173
+This starts the NestJS API and Vite web app concurrently.
+
+### 10. Stop local services
+
+Stop the app terminals with `Ctrl+C`.
+
+Stop PostgreSQL:
+
+```bash
+docker compose down
+```
+
+To also remove the local PostgreSQL volume:
+
+```bash
+docker compose down -v
+```
 
 ## Quality
 
@@ -44,6 +147,18 @@ npm run build
 npm run lint
 npm run test
 npm run test:e2e
+```
+
+## Database Migrations
+
+Prisma owns the PostgreSQL schema under `apps/api/prisma/schema.prisma`; committed SQL migrations live under `apps/api/prisma/migrations`.
+
+```bash
+npm run api:db:generate
+npm run api:db:migrate:dev
+npm run api:db:migrate:deploy
+npm run api:db:reset
+npm run api:db:studio
 ```
 
 The MVP skeleton intentionally keeps business logic light. Controllers, services, repositories, DTOs, shared types, and test folders are in place so implementation can proceed module by module.

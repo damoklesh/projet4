@@ -12,6 +12,11 @@
     "lint": "npm run lint -w packages/shared && npm run lint -w apps/api && npm run lint -w apps/web",
     "test": "npm run test -w packages/shared && npm run test -w apps/api && npm run test -w apps/web",
     "test:e2e": "npm run test:e2e -w apps/api && npm run test:e2e -w apps/web",
+    "api:db:generate": "npm run db:generate -w apps/api",
+    "api:db:migrate:dev": "npm run db:migrate:dev -w apps/api",
+    "api:db:migrate:deploy": "npm run db:migrate:deploy -w apps/api",
+    "api:db:reset": "npm run db:reset -w apps/api",
+    "api:db:studio": "npm run db:studio -w apps/api",
     "format": "prettier --write \"{apps,packages,docs}/**/*.{ts,tsx,js,json,md,css,yml,yaml}\" \"*.{json,md,yml,yaml}\""
   },
   "devDependencies": {

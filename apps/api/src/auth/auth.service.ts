@@ -6,6 +6,8 @@ import { AuthResponseDto } from './dto/auth.response';
 import { LoginRequestDto } from './dto/login.request';
 import { RegisterRequestDto } from './dto/register.request';
 
+const ACCESS_TOKEN_EXPIRES_IN_SECONDS = 3600;
+
 export interface JwtPayload {
   sub: string;
   email: string;
@@ -28,7 +30,7 @@ export class AuthService {
     const passwordHash = await bcrypt.hash(dto.password, 12);
     const user = await this.usersService.createUser(dto.email, passwordHash);
 
-    return this.createAuthResponse(user.id, user.email);
+    return this.createAuthResponse(user);
   }
 
   async login(dto: LoginRequestDto): Promise<AuthResponseDto> {
@@ -38,17 +40,20 @@ export class AuthService {
       throw new UnauthorizedException('Invalid email or password.');
     }
 
-    return this.createAuthResponse(user.id, user.email);
+    return this.createAuthResponse(user);
   }
 
-  private createAuthResponse(userId: string, email: string): AuthResponseDto {
-    const payload: JwtPayload = { sub: userId, email };
+  private createAuthResponse(user: { id: string; email: string; avatar?: string | null }): AuthResponseDto {
+    const payload: JwtPayload = { sub: user.id, email: user.email };
 
     return {
       accessToken: this.jwtService.sign(payload),
+      tokenType: 'Bearer',
+      expiresIn: ACCESS_TOKEN_EXPIRES_IN_SECONDS,
       user: {
-        id: userId,
-        email,
+        id: user.id,
+        email: user.email,
+        avatar: user.avatar ?? null,
       },
     };
   }
