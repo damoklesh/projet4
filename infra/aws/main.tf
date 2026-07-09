@@ -15,6 +15,7 @@ locals {
     "/docs*",
     "/health*",
   ]
+  api_path_pattern_chunks = chunklist(local.api_path_patterns, 5)
 }
 
 resource "random_password" "db_password" {
@@ -417,8 +418,12 @@ resource "aws_lb_listener" "http" {
 }
 
 resource "aws_lb_listener_rule" "api" {
+  for_each = {
+    for index, patterns in local.api_path_pattern_chunks : index => patterns
+  }
+
   listener_arn = aws_lb_listener.http.arn
-  priority     = 10
+  priority     = 10 + tonumber(each.key)
 
   action {
     type             = "forward"
@@ -427,7 +432,7 @@ resource "aws_lb_listener_rule" "api" {
 
   condition {
     path_pattern {
-      values = local.api_path_patterns
+      values = each.value
     }
   }
 }

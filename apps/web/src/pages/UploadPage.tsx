@@ -3,6 +3,7 @@ import { UploadCard } from '../components/file/UploadCard';
 import { UploadSuccessCard } from '../components/file/UploadSuccessCard';
 import { PublicPageLayout } from '../components/layout/PublicPageLayout';
 import { useFileAssetsStore } from '../features/file-assets/file-assets.store';
+import { copyTextToClipboard } from '../services/clipboard';
 import { useState } from 'react';
 
 export function UploadPage() {
@@ -20,7 +21,7 @@ export function UploadPage() {
       {lastUpload ? (
         <UploadSuccessCard
           onCopy={() => {
-            void navigator.clipboard.writeText(lastUpload.shareLink.url);
+            void copyTextToClipboard(lastUpload.shareLink.url);
             setCopyMessage('Lien copie.');
           }}
           onNewUpload={() => {

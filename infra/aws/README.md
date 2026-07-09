@@ -50,14 +50,16 @@ With an empty `VITE_API_BASE_URL`, the browser calls paths like `/auth/login`. T
 
    ```bash
    terraform init
-   terraform apply -target=aws_ecr_repository.api -target=aws_ecr_repository.web
+   terraform apply "-target=aws_ecr_repository.api" "-target=aws_ecr_repository.web"
    ```
 
 2. Build and push Docker images:
 
-   ```bash
+   ```powershell
+   $apiRepo = terraform output -raw api_ecr_repository_url
+   $registry = $apiRepo.Split("/")[0]
    aws ecr get-login-password --region eu-north-1 \
-     | docker login --username AWS --password-stdin <account-id>.dkr.ecr.eu-north-1.amazonaws.com
+     | docker login --username AWS --password-stdin $registry
 
    docker build -f apps/api/Dockerfile -t <api-repo-url>:latest .
    docker push <api-repo-url>:latest

@@ -24,6 +24,7 @@ Default region name: eu-north-1
 Default output format: json
 Check identity:
 aws sts get-caller-identity
+The Account value must match the account ID used in ECR URLs later.
 4.
 Choose AWS region
 The Terraform default is:
@@ -54,31 +55,40 @@ terraform init
 7.
 Create only the ECR repositories first
 You need ECR before pushing Docker images:
-terraform apply `
-  -target=aws_ecr_repository.api `
--target=aws_ecr_repository.web
+terraform apply "-target=aws_ecr_repository.api" "-target=aws_ecr_repository.web"
 Confirm with yes.
 8.
 Get the ECR repository URLs
-terraform output api_ecr_repository_url
-terraform output web_ecr_repository_url
+terraform output -raw api_ecr_repository_url
+terraform output -raw web_ecr_repository_url
 You will get values like:
 123456789012.dkr.ecr.eu-north-1.amazonaws.com/datashare-dev-api
 123456789012.dkr.ecr.eu-north-1.amazonaws.com/datashare-dev-web
 9.
 Log Docker into AWS ECR
-Replace account/region if needed:
-aws ecr get-login-password --region eu-north-1 | docker login --username AWS --password-stdin 123456789012.dkr.ecr.eu-north-1.amazonaws.com
+Use the registry host from the Terraform output, without the repository name:
+$apiRepo = terraform output -raw api_ecr_repository_url
+$registry = $apiRepo.Split("/")[0]
+aws ecr get-login-password --region eu-north-1 | docker login --username AWS --password-stdin $registry
+
+If Docker returns 400 Bad Request, verify that AWS CLI is using the same account and region as the ECR registry:
+aws sts get-caller-identity
+aws ecr describe-repositories --region eu-north-1 --repository-names datashare-dev-api datashare-dev-web
+docker logout $registry
+aws ecr get-login-password --region eu-north-1 | docker login --username AWS --password-stdin $registry
 10.
 Build and push the API image
-From the repo root:
-docker build -f apps/api/Dockerfile -t 123456789012.dkr.ecr.eu-north-1.amazonaws.com/datashare-dev-api:latest .
-docker push 123456789012.dkr.ecr.eu-north-1.amazonaws.com/datashare-dev-api:latest
+From the Terraform folder, infra/aws:
+$apiRepo = terraform output -raw api_ecr_repository_url
+cd ../..
+docker build -f apps/api/Dockerfile -t "${apiRepo}:latest" .
+docker push "${apiRepo}:latest"
 11.
 Build and push the web image
 Important: build with empty VITE_API_BASE_URL so ALB same-origin routing works.
-docker build -f apps/web/Dockerfile --build-arg VITE_API_BASE_URL="" -t 123456789012.dkr.ecr.eu-north-1.amazonaws.com/datashare-dev-web:latest .
-docker push 123456789012.dkr.ecr.eu-north-1.amazonaws.com/datashare-dev-web:latest
+$webRepo = terraform -chdir=infra/aws output -raw web_ecr_repository_url
+docker build -f apps/web/Dockerfile --build-arg VITE_API_BASE_URL="" -t "${webRepo}:latest" .
+docker push "${webRepo}:latest"
 12.
 Apply the full Terraform stack
 Go back to Terraform folder:

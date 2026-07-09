@@ -11,6 +11,7 @@ import { SegmentedControl } from '../components/ui/SegmentedControl';
 import { useAuthStore } from '../features/auth/auth.store';
 import { useFileAssetsStore } from '../features/file-assets/file-assets.store';
 import type { FileAssetHistoryItem } from '../features/file-assets/file-assets.types';
+import { copyTextToClipboard } from '../services/clipboard';
 
 export function HistoryPage() {
   const { logout, user } = useAuthStore((state) => ({
@@ -47,7 +48,7 @@ export function HistoryPage() {
   }, [currentPage, loadHistory, status]);
 
   async function handleCopyShareLink(url: string) {
-    await navigator.clipboard.writeText(url);
+    await copyTextToClipboard(url);
     setCopyMessage('Lien copie.');
   }
 
