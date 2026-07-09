@@ -8,6 +8,7 @@ This folder shows an AWS-native deployment for DataShare using:
 - RDS PostgreSQL instead of the local Postgres container.
 - EFS for uploaded files, because the current API storage adapter writes to local disk.
 - Secrets Manager for database and JWT secrets.
+- One NAT gateway for lower demo cost.
 
 The stack is intentionally commented and parameterized so it can be adapted before real production use.
 
@@ -27,6 +28,8 @@ API ECS service
 Web ECS service
   |-- Nginx serving the React build
 ```
+
+The private subnets share a single NAT gateway to reduce hourly NAT costs for demos. For production, use one NAT gateway per AZ if outbound availability matters.
 
 ## Important Build Detail
 

@@ -77,7 +77,8 @@ locals {
 }
 
 # Simple two-AZ VPC. Public subnets host the ALB; private subnets host ECS,
-# RDS, and EFS. NAT gateways let ECS tasks pull images and reach AWS APIs.
+# RDS, and EFS. A single NAT gateway keeps demo costs lower while letting ECS
+# tasks pull images and reach AWS APIs.
 resource "aws_vpc" "main" {
   cidr_block           = "10.40.0.0/16"
   enable_dns_hostnames = true
@@ -120,23 +121,21 @@ resource "aws_subnet" "private" {
 }
 
 resource "aws_eip" "nat" {
-  count  = 2
   domain = "vpc"
 
   tags = {
-    Name = "${local.name}-nat-${count.index + 1}"
+    Name = "${local.name}-nat"
   }
 }
 
 resource "aws_nat_gateway" "main" {
-  count         = 2
-  allocation_id = aws_eip.nat[count.index].id
-  subnet_id     = aws_subnet.public[count.index].id
+  allocation_id = aws_eip.nat.id
+  subnet_id     = aws_subnet.public[0].id
 
   depends_on = [aws_internet_gateway.main]
 
   tags = {
-    Name = "${local.name}-nat-${count.index + 1}"
+    Name = "${local.name}-nat"
   }
 }
 
@@ -160,23 +159,22 @@ resource "aws_route_table_association" "public" {
 }
 
 resource "aws_route_table" "private" {
-  count  = 2
   vpc_id = aws_vpc.main.id
 
   route {
     cidr_block     = "0.0.0.0/0"
-    nat_gateway_id = aws_nat_gateway.main[count.index].id
+    nat_gateway_id = aws_nat_gateway.main.id
   }
 
   tags = {
-    Name = "${local.name}-private-${count.index + 1}"
+    Name = "${local.name}-private"
   }
 }
 
 resource "aws_route_table_association" "private" {
   count          = 2
   subnet_id      = aws_subnet.private[count.index].id
-  route_table_id = aws_route_table.private[count.index].id
+  route_table_id = aws_route_table.private.id
 }
 
 resource "aws_security_group" "alb" {

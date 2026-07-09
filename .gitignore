@@ -27,4 +27,16 @@ apps/web/cypress/videos/
 apps/web/cypress/screenshots/
 packages/*/dist/
 
-infra/aws/terraform.tfstate
+# Terraform local artifacts
+**/.terraform/
+**/.terraform.lock.hcl
+**/terraform.tfstate
+**/terraform.tfstate.*
+**/*.tfvars
+!**/*.tfvars.example
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
