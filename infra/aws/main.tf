@@ -13,6 +13,7 @@ locals {
     "/share-links*",
     "/me*",
     "/docs*",
+    "/health*",
   ]
 }
 
@@ -29,6 +30,7 @@ resource "random_password" "jwt_secret" {
 resource "aws_ecr_repository" "api" {
   name                 = "${local.name}-api"
   image_tag_mutability = "MUTABLE"
+  force_delete         = true
 
   image_scanning_configuration {
     scan_on_push = true
@@ -38,6 +40,7 @@ resource "aws_ecr_repository" "api" {
 resource "aws_ecr_repository" "web" {
   name                 = "${local.name}-web"
   image_tag_mutability = "MUTABLE"
+  force_delete         = true
 
   image_scanning_configuration {
     scan_on_push = true
@@ -196,9 +199,9 @@ resource "aws_security_group" "alb" {
   }
 }
 
-resource "aws_security_group" "ecs" {
-  name        = "${local.name}-ecs"
-  description = "Traffic from ALB to ECS tasks"
+resource "aws_security_group" "web" {
+  name        = "${local.name}-web"
+  description = "HTTP traffic from the ALB to web ECS tasks"
   vpc_id      = aws_vpc.main.id
 
   ingress {
@@ -207,6 +210,19 @@ resource "aws_security_group" "ecs" {
     protocol        = "tcp"
     security_groups = [aws_security_group.alb.id]
   }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+resource "aws_security_group" "api" {
+  name        = "${local.name}-api"
+  description = "HTTP traffic from the ALB to API ECS tasks"
+  vpc_id      = aws_vpc.main.id
 
   ingress {
     from_port       = 3000
@@ -232,7 +248,7 @@ resource "aws_security_group" "db" {
     from_port       = 5432
     to_port         = 5432
     protocol        = "tcp"
-    security_groups = [aws_security_group.ecs.id]
+    security_groups = [aws_security_group.api.id]
   }
 }
 
@@ -245,7 +261,7 @@ resource "aws_security_group" "efs" {
     from_port       = 2049
     to_port         = 2049
     protocol        = "tcp"
-    security_groups = [aws_security_group.ecs.id]
+    security_groups = [aws_security_group.api.id]
   }
 }
 
@@ -289,7 +305,8 @@ resource "aws_efs_mount_target" "uploads" {
 }
 
 resource "aws_secretsmanager_secret" "api" {
-  name = "${local.name}/api"
+  name                    = "${local.name}/api"
+  recovery_window_in_days = 0
 }
 
 resource "aws_secretsmanager_secret_version" "api" {
@@ -370,7 +387,7 @@ resource "aws_lb_target_group" "api" {
   vpc_id      = aws_vpc.main.id
 
   health_check {
-    path                = "/docs"
+    path                = "/health"
     matcher             = "200-399"
     healthy_threshold   = 2
     unhealthy_threshold = 3
@@ -532,7 +549,7 @@ resource "aws_ecs_service" "api" {
 
   network_configuration {
     subnets          = aws_subnet.private[*].id
-    security_groups  = [aws_security_group.ecs.id]
+    security_groups  = [aws_security_group.api.id]
     assign_public_ip = false
   }
 
@@ -558,7 +575,7 @@ resource "aws_ecs_service" "web" {
 
   network_configuration {
     subnets          = aws_subnet.private[*].id
-    security_groups  = [aws_security_group.ecs.id]
+    security_groups  = [aws_security_group.web.id]
     assign_public_ip = false
   }
 

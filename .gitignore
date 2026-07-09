@@ -26,3 +26,5 @@ apps/web/cypress/downloads/
 apps/web/cypress/videos/
 apps/web/cypress/screenshots/
 packages/*/dist/
+
+infra/aws/terraform.tfstate

@@ -6,6 +6,7 @@ import { AuthModule } from './auth/auth.module';
 import { DatabaseModule } from './database/database.module';
 import { ExpirationModule } from './expiration/expiration.module';
 import { FileAssetsModule } from './file-assets/file-assets.module';
+import { HealthModule } from './health/health.module';
 import { ShareLinksModule } from './share-links/share-links.module';
 import { StorageModule } from './storage/storage.module';
 import { TagsModule } from './tags/tags.module';
@@ -24,6 +25,7 @@ import { UsersModule } from './users/users.module';
     AuthModule,
     StorageModule,
     ExpirationModule,
+    HealthModule,
     FileAssetsModule,
     ShareLinksModule,
     TagsModule,
