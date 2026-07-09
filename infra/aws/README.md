@@ -53,8 +53,8 @@ With an empty `VITE_API_BASE_URL`, the browser calls paths like `/auth/login`. T
 2. Build and push Docker images:
 
    ```bash
-   aws ecr get-login-password --region eu-west-3 \
-     | docker login --username AWS --password-stdin <account-id>.dkr.ecr.eu-west-3.amazonaws.com
+   aws ecr get-login-password --region eu-north-1 \
+     | docker login --username AWS --password-stdin <account-id>.dkr.ecr.eu-north-1.amazonaws.com
 
    docker build -f apps/api/Dockerfile -t <api-repo-url>:latest .
    docker push <api-repo-url>:latest

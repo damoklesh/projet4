@@ -1,7 +1,7 @@
 variable "aws_region" {
   description = "AWS region where the stack will be deployed."
   type        = string
-  default     = "eu-west-3"
+  default     = "eu-north-1"
 }
 
 variable "project_name" {

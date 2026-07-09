@@ -20,22 +20,22 @@ aws configure
 Enter:
 AWS Access Key ID
 AWS Secret Access Key
-Default region name: eu-west-3
+Default region name: eu-north-1
 Default output format: json
 Check identity:
 aws sts get-caller-identity
 4.
 Choose AWS region
 The Terraform default is:
-eu-west-3
-Paris region. You can change it in:
+eu-north-1
+Stockholm region. You can change it in:
 infra/aws/terraform.tfvars
 5.
 Create your Terraform variables file
 Copy the example:
 Copy-Item infra/aws/terraform.tfvars.example infra/aws/terraform.tfvars
 Edit:
-aws_region  = "eu-west-3"
+aws_region  = "eu-north-1"
 environment = "dev"
 
 api_image_tag = "latest"
@@ -63,22 +63,22 @@ Get the ECR repository URLs
 terraform output api_ecr_repository_url
 terraform output web_ecr_repository_url
 You will get values like:
-123456789012.dkr.ecr.eu-west-3.amazonaws.com/datashare-dev-api
-123456789012.dkr.ecr.eu-west-3.amazonaws.com/datashare-dev-web
+123456789012.dkr.ecr.eu-north-1.amazonaws.com/datashare-dev-api
+123456789012.dkr.ecr.eu-north-1.amazonaws.com/datashare-dev-web
 9.
 Log Docker into AWS ECR
 Replace account/region if needed:
-aws ecr get-login-password --region eu-west-3 | docker login --username AWS --password-stdin 123456789012.dkr.ecr.eu-west-3.amazonaws.com
+aws ecr get-login-password --region eu-north-1 | docker login --username AWS --password-stdin 123456789012.dkr.ecr.eu-north-1.amazonaws.com
 10.
 Build and push the API image
 From the repo root:
-docker build -f apps/api/Dockerfile -t 123456789012.dkr.ecr.eu-west-3.amazonaws.com/datashare-dev-api:latest .
-docker push 123456789012.dkr.ecr.eu-west-3.amazonaws.com/datashare-dev-api:latest
+docker build -f apps/api/Dockerfile -t 123456789012.dkr.ecr.eu-north-1.amazonaws.com/datashare-dev-api:latest .
+docker push 123456789012.dkr.ecr.eu-north-1.amazonaws.com/datashare-dev-api:latest
 11.
 Build and push the web image
 Important: build with empty VITE_API_BASE_URL so ALB same-origin routing works.
-docker build -f apps/web/Dockerfile --build-arg VITE_API_BASE_URL="" -t 123456789012.dkr.ecr.eu-west-3.amazonaws.com/datashare-dev-web:latest .
-docker push 123456789012.dkr.ecr.eu-west-3.amazonaws.com/datashare-dev-web:latest
+docker build -f apps/web/Dockerfile --build-arg VITE_API_BASE_URL="" -t 123456789012.dkr.ecr.eu-north-1.amazonaws.com/datashare-dev-web:latest .
+docker push 123456789012.dkr.ecr.eu-north-1.amazonaws.com/datashare-dev-web:latest
 12.
 Apply the full Terraform stack
 Go back to Terraform folder:
