@@ -20,7 +20,7 @@ const FORBIDDEN_EXTENSIONS = ['.bat', '.cmd', '.com', '.dll', '.exe', '.msi', '.
 export function UploadFormCard({ file, isLoading = false, onChangeFile, onUpload }: UploadFormCardProps) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [password, setPassword] = useState('');
-  const [expirationDays, setExpirationDays] = useState(1);
+  const [expirationDays, setExpirationDays] = useState(7);
   const [validationError, setValidationError] = useState<string | null>(validateSelectedFile(file));
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {

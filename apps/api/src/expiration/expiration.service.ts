@@ -3,9 +3,13 @@ import type { FileStatus } from '@datashare/shared';
 
 @Injectable()
 export class ExpirationService {
-  getFunctionalStatus(input: { deletedAt?: Date | null; expiresAt: Date }): FileStatus {
+  getFunctionalStatus(input: { deletedAt?: Date | null; expiredAt?: Date | null; expiresAt: Date }): FileStatus {
     if (input.deletedAt) {
       return 'deleted';
+    }
+
+    if (input.expiredAt) {
+      return 'expired';
     }
 
     return this.isExpired(input.expiresAt) ? 'expired' : 'active';

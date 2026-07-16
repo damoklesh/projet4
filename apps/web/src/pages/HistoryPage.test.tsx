@@ -122,6 +122,30 @@ describe('HistoryPage', () => {
     });
   });
 
+  it('shows expired files as non-actionable history rows', () => {
+    storeState.current = {
+      ...storeState.current!,
+      history: [
+        createHistoryItem({
+          status: 'expired',
+          shareLink: {
+            url: '',
+            token: '',
+            expiresAt: '2026-07-15T10:30:00.000Z',
+            isPasswordProtected: false,
+          },
+        }),
+      ],
+    };
+
+    render(<HistoryPage />);
+
+    expect(screen.getByText(/ce fichier a expire, il n'est plus stocke chez nous/i)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /copier le lien/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /telecharger document.pdf/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /supprimer document.pdf/i })).not.toBeInTheDocument();
+  });
+
   it('supports pagination and copy link actions', async () => {
     render(<HistoryPage />);
 
@@ -172,7 +196,17 @@ describe('HistoryPage', () => {
   });
 });
 
-function createHistoryItem() {
+function createHistoryItem(
+  overrides: Partial<{
+    status: 'active' | 'expired' | 'deleted';
+    shareLink: {
+      url: string;
+      token: string;
+      expiresAt: string;
+      isPasswordProtected: boolean;
+    };
+  }> = {},
+) {
   return {
     id: 'file-id',
     fileName: 'document.pdf',
@@ -180,10 +214,10 @@ function createHistoryItem() {
     size: 245760,
     uploadedAt: '2026-07-08T10:30:00.000Z',
     expiresAt: '2026-07-15T10:30:00.000Z',
-    status: 'active' as const,
+    status: overrides.status ?? ('active' as const),
     isPasswordProtected: true,
     tags: [{ id: 'tag-id', name: 'facture' }],
-    shareLink: {
+    shareLink: overrides.shareLink ?? {
       url: 'http://localhost:5173/share/share-token',
       token: 'share-token',
       expiresAt: '2026-07-15T10:30:00.000Z',

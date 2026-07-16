@@ -86,12 +86,12 @@ export class FileAssetsRepository {
     const now = new Date();
     const where: Prisma.FileAssetWhereInput = {
       ownerId,
-      deletedAt: null,
       ...(query.status === 'active' && {
+        expiredAt: null,
         shareLink: { expiresAt: { gt: now } },
       }),
       ...(query.status === 'expired' && {
-        shareLink: { expiresAt: { lte: now } },
+        OR: [{ expiredAt: { not: null } }, { shareLink: { expiresAt: { lte: now } } }],
       }),
       ...(query.tag && {
         fileTags: {
@@ -138,11 +138,40 @@ export class FileAssetsRepository {
     });
   }
 
-  markDeleted(fileAssetId: string) {
+  deleteById(fileAssetId: string) {
+    return this.prisma.fileAsset.delete({
+      where: { id: fileAssetId },
+    });
+  }
+
+  listExpiredWithStorage(now: Date, limit = 100) {
+    return this.prisma.fileAsset.findMany({
+      where: {
+        expiredAt: null,
+        storagePath: { not: null },
+        shareLink: {
+          expiresAt: { lte: now },
+        },
+      },
+      include: {
+        shareLink: true,
+      },
+      take: limit,
+      orderBy: {
+        shareLink: {
+          expiresAt: 'asc',
+        },
+      },
+    });
+  }
+
+  markExpired(fileAssetId: string) {
     return this.prisma.fileAsset.update({
       where: { id: fileAssetId },
       data: {
-        deletedAt: new Date(),
+        expiredAt: new Date(),
+        storageName: null,
+        storagePath: null,
       },
     });
   }

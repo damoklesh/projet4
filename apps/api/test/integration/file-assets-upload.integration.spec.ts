@@ -108,6 +108,7 @@ describe('POST /file-assets', () => {
       mimeType: input.mimeType,
       size: BigInt(input.size),
       uploadedAt: new Date('2026-07-08T10:30:00.000Z'),
+      expiredAt: null,
       deletedAt: null,
       shareLink: {
         id: 'share-id',

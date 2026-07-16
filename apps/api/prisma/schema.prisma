@@ -25,16 +25,18 @@ model FileAsset {
   ownerId      String?    @map("owner_id") @db.Uuid
   owner        User?      @relation(fields: [ownerId], references: [id], onDelete: SetNull)
   originalName String     @map("original_name")
-  storageName  String     @unique @map("storage_name")
-  storagePath  String     @map("storage_path")
+  storageName  String?    @unique @map("storage_name")
+  storagePath  String?    @map("storage_path")
   mimeType     String     @map("mime_type")
   size         BigInt
   uploadedAt   DateTime   @default(now()) @map("uploaded_at")
+  expiredAt    DateTime?  @map("expired_at")
   deletedAt    DateTime?  @map("deleted_at")
   shareLink    ShareLink?
   fileTags     FileTag[]
 
   @@index([ownerId, uploadedAt])
+  @@index([expiredAt])
   @@index([deletedAt])
   @@map("file_assets")
 }

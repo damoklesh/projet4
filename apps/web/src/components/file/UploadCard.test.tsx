@@ -46,4 +46,19 @@ describe('UploadCard', () => {
       expirationDays: 7,
     });
   });
+
+  it('defaults expiration to 7 days', async () => {
+    const onUpload = vi.fn().mockResolvedValue(undefined);
+    const file = new File(['hello'], 'document.pdf', { type: 'application/pdf' });
+    render(<UploadCard onUpload={onUpload} />);
+
+    await userEvent.upload(screen.getByLabelText(/choose file/i), file);
+    await userEvent.click(screen.getByRole('button', { name: /televerser/i }));
+
+    expect(onUpload).toHaveBeenCalledWith({
+      file,
+      password: undefined,
+      expirationDays: 7,
+    });
+  });
 });

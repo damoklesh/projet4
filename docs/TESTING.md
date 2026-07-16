@@ -40,13 +40,13 @@ DataShare utilise plusieurs niveaux de tests complémentaires.
 
 | Type de test | Cible | Scénarios principaux | Outils |
 |---|---|---|---|
-| Tests unitaires | Services métier | Création utilisateur, génération JWT, création `FileAsset`, création `ShareLink`, calcul du statut `active/expired/deleted`, suppression logique, vérification du mot de passe de lien | Jest |
+| Tests unitaires | Services métier | Création utilisateur, génération JWT, création `FileAsset`, création `ShareLink`, calcul du statut `active/expired/deleted`, suppression définitive utilisateur, vérification du mot de passe de lien | Jest |
 | Tests unitaires | Services techniques | Hash de mot de passe, génération de token non prédictible, calcul de date d’expiration, validation des extensions/types interdits, génération du chemin de stockage | Jest |
 | Tests d’intégration | Controllers REST | `POST /auth/register`, `POST /auth/login`, `POST /file-assets`, `GET /me/file-assets`, `DELETE /file-assets/{id}`, `GET /share-links/{token}`, `POST /share-links/{token}/download` | Jest + Supertest |
 | Tests d’intégration | Authentification / autorisation | Refus sans token, refus avec token invalide, accès avec token valide, impossibilité de supprimer le fichier d’un autre utilisateur | Jest + Supertest |
 | Tests d’intégration | Upload / download | Upload multipart valide, rejet fichier trop volumineux, rejet type interdit, téléchargement par token valide, refus token expiré, refus mot de passe invalide | Jest + Supertest |
 | Tests base de données | Repositories / ORM | Création utilisateur, création fichier, création lien, association tags, suppression ou invalidation des liens | DB de test / Docker |
-| Tests tâche planifiée | Expiration des fichiers | Fichier expiré supprimé ou marqué supprimé, fichier actif conservé, fichier physique supprimé du stockage | Jest |
+| Tests tâche planifiée | Expiration des fichiers | Fichier expiré conservé dans l'historique, lien rendu non actionnable, fichier physique supprimé du stockage | Jest |
 
 ---
 

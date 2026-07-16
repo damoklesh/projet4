@@ -18,7 +18,7 @@ describe('DELETE /file-assets/:fileAssetId', () => {
     createWithShareLink: jest.fn(),
     listForOwner: jest.fn(),
     findById: jest.fn(),
-    markDeleted: jest.fn(),
+    deleteById: jest.fn(),
   };
   const storage = {
     save: jest.fn(),
@@ -86,7 +86,7 @@ describe('DELETE /file-assets/:fileAssetId', () => {
     await app.init();
 
     storage.delete.mockResolvedValue(undefined);
-    repository.markDeleted.mockResolvedValue(createFileAsset({ ownerId: 'user-id', deletedAt: new Date() }));
+    repository.deleteById.mockResolvedValue(createFileAsset({ ownerId: 'user-id' }));
   });
 
   afterEach(async () => {
@@ -112,10 +112,10 @@ describe('DELETE /file-assets/:fileAssetId', () => {
             status: 'deleted',
           },
         });
-      });
+    });
 
     expect(storage.delete).toHaveBeenCalledWith('/storage/document.pdf');
-    expect(repository.markDeleted).toHaveBeenCalledWith('file-id');
+    expect(repository.deleteById).toHaveBeenCalledWith('file-id');
   });
 
   it('rejects deletion of another user file with 403 application/problem+json', async () => {
@@ -132,7 +132,7 @@ describe('DELETE /file-assets/:fileAssetId', () => {
       });
 
     expect(storage.delete).not.toHaveBeenCalled();
-    expect(repository.markDeleted).not.toHaveBeenCalled();
+    expect(repository.deleteById).not.toHaveBeenCalled();
   });
 
   it('returns 404 application/problem+json when the file does not exist', async () => {
@@ -164,6 +164,7 @@ function createFileAsset(input: { ownerId: string; deletedAt?: Date | null }) {
     mimeType: 'application/pdf',
     size: BigInt(12),
     uploadedAt: new Date('2026-07-08T10:30:00.000Z'),
+    expiredAt: null,
     deletedAt: input.deletedAt ?? null,
     shareLink: {
       id: 'share-id',

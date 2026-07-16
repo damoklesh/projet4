@@ -1,7 +1,7 @@
-describe('US07 anonymous upload', () => {
-  it('uploads a file without authentication and displays the public share link', () => {
+describe('US01 authenticated upload', () => {
+  it('uploads a file with authentication and displays the public share link', () => {
     cy.intercept('POST', '**/file-assets', (request) => {
-      expect(request.headers.authorization).to.equal(undefined);
+      expect(request.headers.authorization).to.equal('Bearer jwt-token');
       request.reply({
         statusCode: 201,
         headers: {
@@ -11,33 +11,49 @@ describe('US07 anonymous upload', () => {
           status: 'success',
           message: 'Fichier televerse avec succes.',
           data: createUploadResponse({
-            fileName: 'anonymous.pdf',
-            shareUrl: 'http://localhost:5173/share/anonymous-token',
-            token: 'anonymous-token',
+            fileName: 'authenticated.pdf',
+            shareUrl: 'http://localhost:5173/share/authenticated-token',
+            token: 'authenticated-token',
           }),
         },
       });
     }).as('anonymousUpload');
 
-    cy.visit('/upload');
+    cy.visit('/upload', {
+      onBeforeLoad(window) {
+        window.localStorage.setItem(
+          'datashare.auth',
+          JSON.stringify({
+            accessToken: 'jwt-token',
+            tokenType: 'Bearer',
+            expiresIn: 3600,
+            user: {
+              id: 'user-id',
+              email: 'user@example.com',
+              avatar: null,
+            },
+          }),
+        );
+      },
+    });
     cy.contains(/tu veux partager un fichier/i).should('be.visible');
     cy.get('input[type="file"]').selectFile(
       {
-        contents: Cypress.Buffer.from('anonymous file content'),
-        fileName: 'anonymous.pdf',
+        contents: Cypress.Buffer.from('authenticated file content'),
+        fileName: 'authenticated.pdf',
         mimeType: 'application/pdf',
       },
       { force: true },
     );
 
-    cy.contains('anonymous.pdf').should('be.visible');
+    cy.contains('authenticated.pdf').should('be.visible');
     cy.get('input[name="password"]').type('secret1');
     cy.get('select[name="expirationDays"]').select('7');
     cy.contains('button', /televerser/i).click();
 
     cy.wait('@anonymousUpload');
     cy.contains(/felicitations/i).should('be.visible');
-    cy.get('input[aria-label="Lien de partage"]').should('have.value', 'http://localhost:5173/share/anonymous-token');
+    cy.get('input[aria-label="Lien de partage"]').should('have.value', 'http://localhost:5173/share/authenticated-token');
   });
 });
 

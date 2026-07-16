@@ -129,6 +129,28 @@ describe('Public share links', () => {
       });
   });
 
+  it('returns 410 application/problem+json when the physical file was already purged', async () => {
+    repository.findByToken.mockResolvedValue(
+      createShareLink({
+        fileAsset: {
+          storagePath: null,
+        },
+      }),
+    );
+
+    await request(app.getHttpServer())
+      .post('/share-links/public-token/download')
+      .send({})
+      .expect('Content-Type', /application\/problem\+json/)
+      .expect(410)
+      .expect(({ body }) => {
+        expect(body.detail).toBe('Shared file is no longer stored.');
+      });
+
+    expect(storage.createReadStream).not.toHaveBeenCalled();
+    expect(repository.incrementDownloadCount).not.toHaveBeenCalled();
+  });
+
   it('streams an unprotected active file and increments the download count', async () => {
     repository.findByToken.mockResolvedValue(createShareLink({ mimeType: 'application/octet-stream' }));
 
@@ -194,6 +216,8 @@ function createShareLink(overrides: {
   mimeType?: string;
   fileAsset?: Partial<{
     deletedAt: Date | null;
+    expiredAt: Date | null;
+    storagePath: string | null;
   }>;
 } = {}) {
   const fileAsset = {
@@ -205,6 +229,7 @@ function createShareLink(overrides: {
     mimeType: overrides.mimeType ?? 'application/pdf',
     size: BigInt(12),
     uploadedAt: new Date('2026-07-08T10:30:00.000Z'),
+    expiredAt: null,
     deletedAt: null,
     ...overrides.fileAsset,
   };

@@ -12,6 +12,18 @@ This folder shows an AWS-native deployment for DataShare using:
 
 The stack is intentionally commented and parameterized so it can be adapted before real production use.
 
+## CI/CD With GitHub Actions
+
+I implemented a GitHub Actions pipeline to run the project checks automatically on pushes and pull requests. This keeps regressions visible before code is merged by running quality checks, API unit and integration tests, web tests, Cypress E2E tests, and a real API E2E flow with Docker Compose.
+
+The workflow is defined in `.github/workflows/ci.yaml`. It installs the Node.js workspace, generates the Prisma client, builds the shared package where needed, runs the test suites, and starts Docker services for the end-to-end scenario that exercises the web app against the real API.
+
+## Dockerisation And AWS Deployment
+
+I implemented Docker images for both deployable applications so the API and web app can run consistently across local development, CI, and AWS. The API image is defined in `apps/api/Dockerfile`, the web image in `apps/web/Dockerfile`, and local multi-service orchestration is available in `docker-compose.yml`.
+
+For cloud deployment, I implemented an AWS ECS Fargate stack with Terraform in `infra/aws`. The deployment provisions ECR repositories for the images, ECS Fargate services for the API and web containers, an Application Load Balancer for public traffic and same-origin API routing, RDS PostgreSQL, EFS for uploaded files, Secrets Manager for runtime secrets, CloudWatch logs, and the required VPC networking.
+
 ## Architecture
 
 ```text

@@ -149,6 +149,41 @@ npm run test
 npm run test:e2e
 ```
 
+## Performance Tests
+
+The k6 load-test script is located at:
+
+```text
+perf/k6/datashare-load.js
+```
+
+Start the API and database first:
+
+```bash
+docker compose up -d postgres api
+```
+
+Then run:
+
+```bash
+npm run perf:k6
+```
+
+Optional API target override:
+
+```bash
+BASE_URL=http://localhost:3000 npm run perf:k6
+```
+
+On Windows PowerShell:
+
+```powershell
+$env:BASE_URL="http://localhost:3000"
+npm run perf:k6
+```
+
+The human-readable performance report is maintained in `docs/PERF.md`.
+
 ## Coverage Generation
 
 Generate lint and unit/integration coverage reports from the repository root:

@@ -3,6 +3,7 @@ import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
 import type { FileAssetResponse } from '../../features/file-assets/file-assets.types';
 import { FilePreviewRow } from './FilePreviewRow';
+import { getRetentionLabel } from './file-format';
 
 interface UploadSuccessCardProps {
   onCopy: () => void;
@@ -15,7 +16,7 @@ export function UploadSuccessCard({ onCopy, onNewUpload, upload }: UploadSuccess
     <Card title="Ajouter un fichier" variant="bottomSheet">
       <FilePreviewRow fileName={upload.fileAsset.fileName} size={upload.fileAsset.size} />
       <p className="upload-success__message">
-        Felicitations, ton fichier sera conserve chez nous pendant une semaine !
+        {getRetentionLabel(upload.shareLink.expiresAt)}
       </p>
       <div className="copy-row">
         <input aria-label="Lien de partage" className="input" readOnly value={upload.shareLink.url} />

@@ -177,7 +177,78 @@ Capture associée :
 
 ---
 
-## 5. Budget de performance frontend
+## 5. Résultats k6
+
+Une campagne k6 a été exécutée localement le 16/07/2026 avec le script :
+
+```text
+perf/k6/datashare-load.js
+```
+
+Commande utilisée :
+
+```bash
+npm run perf:k6
+```
+
+### 5.1 Couverture du test
+
+| Scénario | Charge | Endpoint principal | Résultat fonctionnel |
+|---|---:|---|---|
+| Login | 100 utilisateurs virtuels | `POST /auth/login` | 100% des checks réussis |
+| Upload | 20 utilisateurs virtuels | `POST /file-assets` | 0 échec |
+| Download | 50 utilisateurs virtuels | `POST /share-links/{token}/download` | 0 échec |
+| Historique | 200 utilisateurs virtuels | `GET /me/file-assets` | 0 échec |
+
+Le test complet a exécuté 370 itérations, 571 requêtes HTTP et 700 checks. Aucun check n'a échoué et le taux d'échec HTTP est resté à 0%.
+
+La phase `setup` du script crée des utilisateurs de test uniques, les authentifie, puis téléverse un fichier initial utilisé par le scénario de téléchargement.
+
+### 5.2 Seuils k6
+
+| Seuil | Résultat observé | Objectif | Statut |
+|---|---:|---:|---|
+| Taux d'erreur HTTP | 0.00% | < 5% | Conforme |
+| Échecs login | 0.00% | < 1% | Conforme |
+| Échecs upload | 0.00% | < 5% | Conforme |
+| Échecs download | 0.00% | < 5% | Conforme |
+| Échecs historique | 0.00% | < 5% | Conforme |
+| Login p95 | 26.82 s | < 1 s | Non conforme |
+| Upload p95 | 8.07 s | < 3 s | Non conforme |
+| Download first byte p95 | 128.84 ms | < 1 s | Conforme |
+| Historique p95 | 682.56 ms | < 1 s | Conforme |
+
+### 5.3 Métriques principales
+
+| Scénario | Moyenne | Médiane | p90 | p95 | Maximum |
+|---|---:|---:|---:|---:|---:|
+| Login | 15.82 s | 14.37 s | 25.36 s | 26.82 s | 27.87 s |
+| Upload | 8.04 s | 8.05 s | 8.07 s | 8.07 s | 8.07 s |
+| Download first byte | 77.57 ms | 77.64 ms | 125.66 ms | 128.84 ms | 130.89 ms |
+| Historique | 407.72 ms | 439.02 ms | 657.07 ms | 682.57 ms | 715.33 ms |
+
+### 5.4 Exécution et réseau
+
+| Métrique | Valeur |
+|---|---:|
+| Requêtes HTTP totales | 571 |
+| Débit moyen | 4.42 req/s |
+| Itérations terminées | 370 |
+| Durée totale du run | 2 min 09.1 s |
+| Données reçues | 409 kB |
+| Données envoyées | 175 kB |
+
+### 5.5 Interprétation
+
+La campagne k6 montre que les parcours critiques restent fonctionnellement stables sous la charge configurée : aucun téléchargement, upload, login ou appel d'historique n'a échoué. Les endpoints de téléchargement et d'historique restent sous les seuils de latence.
+
+En revanche, les seuils de performance ne sont pas entièrement validés. Le login présente une latence p95 très élevée, à 26.82 secondes pour 100 utilisateurs virtuels. L'upload dépasse aussi son objectif, avec une latence p95 de 8.07 secondes pour 20 utilisateurs virtuels.
+
+Ces résultats indiquent que le MVP est fonctionnel sous cette charge locale, mais que les performances de login et d'upload doivent être analysées avant une mise en production réelle. Les pistes principales sont la mesure CPU/mémoire pendant le test, l'observation PostgreSQL, le coût du hash de mot de passe sur les logins concurrents et le traitement serveur de l'upload.
+
+---
+
+## 6. Budget de performance frontend
 
 Le budget de performance côté frontend est volontairement simple pour le MVP.
 
@@ -194,7 +265,7 @@ Le budget de performance côté frontend est volontairement simple pour le MVP.
 
 ---
 
-## 6. Synthèse des résultats
+## 7. Synthèse des résultats
 
 | Test | Résultat observé | Objectif MVP | Statut |
 |---|---:|---:|---|
@@ -203,38 +274,36 @@ Le budget de performance côté frontend est volontairement simple pour le MVP.
 | Upload fichier léger | 179.58 ms | < 500 ms | Conforme |
 | LCP écran historique | 0.74 s | < 2 s | Conforme |
 | CLS écran historique | 0.03 | < 0.1 | Conforme |
+| k6 download first byte p95 | 128.84 ms | < 1 s | Conforme |
+| k6 historique p95 | 682.56 ms | < 1 s | Conforme |
+| k6 login p95 | 26.82 s | < 1 s | Non conforme |
+| k6 upload p95 | 8.07 s | < 3 s | Non conforme |
 
-Les résultats observés sont satisfaisants pour un MVP local. Les endpoints testés restent sous les seuils fixés et l’écran d’historique présente un bon comportement frontend.
+Les résultats observés avec Chrome DevTools sont satisfaisants pour un MVP local. La campagne k6 confirme la stabilité fonctionnelle des parcours critiques, mais met en évidence deux points de performance non conformes sous charge : login et upload.
 
 ---
 
-## 7. Limites du test
+## 8. Limites du test
 
-Les mesures présentées sont des mesures locales et ponctuelles. Elles ne remplacent pas un test de charge complet.
+Les mesures présentées sont des mesures locales et ponctuelles. La campagne k6 donne une première indication sous charge, mais elle ne remplace pas un test de performance en environnement représentatif de production.
 
 Limites connues :
 
 - environnement local, non représentatif d’une production réelle ;
 - faible volume de données ;
 - fichiers de test légers ;
-- absence de concurrence utilisateur ;
-- absence de mesure mémoire serveur ;
+- charge k6 limitée à une itération par utilisateur virtuel ;
+- absence de mesure CPU/mémoire serveur dans le rapport ;
 - absence de test avec fichiers proches de la limite de 1 Go.
 
 ---
 
-## 8. Évolutions prévues
+## 9. Évolutions prévues
 
-Une campagne de test avec k6 pourra être ajoutée ultérieurement afin de simuler plusieurs utilisateurs virtuels sur les endpoints critiques :
+Les prochaines campagnes de performance devront compléter ce premier run k6 avec :
 
-```http
-POST /file-assets
-POST /share-links/{token}/download
-GET /me/file-assets?page=1&pageSize=10&status=all
-```
-
-Objectifs futurs :
-
-- mesurer le comportement sous charge ;
-- vérifier la stabilité de l’upload/download en concurrence ;
-- surveiller la consommation mémoire ;
+- un relevé CPU/mémoire pendant l'exécution ;
+- une analyse du coût du login sous concurrence ;
+- des uploads de tailles différentes ;
+- un test plus long avec plusieurs itérations par utilisateur virtuel ;
+- une exécution dans un environnement plus proche de la production.

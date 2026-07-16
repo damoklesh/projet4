@@ -56,6 +56,7 @@ describe('FileAssetsRepository', () => {
       count: jest.fn(),
       findUnique: jest.fn(),
       update: jest.fn(),
+      delete: jest.fn(),
     },
   };
 
@@ -192,7 +193,6 @@ describe('FileAssetsRepository', () => {
     expect(prisma.fileAsset.count).toHaveBeenCalledWith({
       where: expect.objectContaining({
         ownerId: 'user-id',
-        deletedAt: null,
       }),
     });
   });
@@ -213,16 +213,56 @@ describe('FileAssetsRepository', () => {
     });
   });
 
-  it('marks a file asset as deleted', async () => {
+  it('deletes a file asset by id', async () => {
+    const repository = new FileAssetsRepository(prisma as never);
+    prisma.fileAsset.delete.mockResolvedValue({ id: 'file-id' });
+
+    await expect(repository.deleteById('file-id')).resolves.toEqual({ id: 'file-id' });
+
+    expect(prisma.fileAsset.delete).toHaveBeenCalledWith({
+      where: { id: 'file-id' },
+    });
+  });
+
+  it('lists expired file assets that still have physical storage', async () => {
+    const repository = new FileAssetsRepository(prisma as never);
+    const now = new Date('2026-07-16T10:30:00.000Z');
+    prisma.fileAsset.findMany.mockResolvedValue([{ id: 'file-id' }]);
+
+    await expect(repository.listExpiredWithStorage(now)).resolves.toEqual([{ id: 'file-id' }]);
+
+    expect(prisma.fileAsset.findMany).toHaveBeenCalledWith({
+      where: {
+        expiredAt: null,
+        storagePath: { not: null },
+        shareLink: {
+          expiresAt: { lte: now },
+        },
+      },
+      include: {
+        shareLink: true,
+      },
+      take: 100,
+      orderBy: {
+        shareLink: {
+          expiresAt: 'asc',
+        },
+      },
+    });
+  });
+
+  it('marks an expired file as no longer stored', async () => {
     const repository = new FileAssetsRepository(prisma as never);
     prisma.fileAsset.update.mockResolvedValue({ id: 'file-id' });
 
-    await expect(repository.markDeleted('file-id')).resolves.toEqual({ id: 'file-id' });
+    await expect(repository.markExpired('file-id')).resolves.toEqual({ id: 'file-id' });
 
     expect(prisma.fileAsset.update).toHaveBeenCalledWith({
       where: { id: 'file-id' },
       data: {
-        deletedAt: expect.any(Date),
+        expiredAt: expect.any(Date),
+        storageName: null,
+        storagePath: null,
       },
     });
   });

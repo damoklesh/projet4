@@ -86,6 +86,7 @@ export class FileAssetsService {
           expiresAt: created.shareLink.expiresAt,
           status: this.expirationService.getFunctionalStatus({
             deletedAt: created.deletedAt,
+            expiredAt: created.expiredAt,
             expiresAt: created.shareLink.expiresAt,
           }),
           isPasswordProtected,
@@ -115,8 +116,15 @@ export class FileAssetsService {
     return {
       items: result.items.map((asset) => {
         const shareLink = asset.shareLink;
-        const expiresAt = shareLink?.expiresAt ?? asset.uploadedAt;
-        const isPasswordProtected = Boolean(shareLink?.passwordHash);
+        const expiresAt = shareLink?.expiresAt ?? asset.expiredAt ?? asset.uploadedAt;
+        const status = this.expirationService.getFunctionalStatus({
+          deletedAt: asset.deletedAt,
+          expiredAt: asset.expiredAt,
+          expiresAt,
+        });
+        const actionableShareToken = status === 'active' ? (shareLink?.token ?? '') : '';
+        const isShareLinkActionable = actionableShareToken.length > 0;
+        const isPasswordProtected = isShareLinkActionable && Boolean(shareLink?.passwordHash);
 
         return {
           id: asset.id,
@@ -125,18 +133,15 @@ export class FileAssetsService {
           size: Number(asset.size),
           uploadedAt: asset.uploadedAt,
           expiresAt,
-          status: this.expirationService.getFunctionalStatus({
-            deletedAt: asset.deletedAt,
-            expiresAt,
-          }),
+          status,
           isPasswordProtected,
           tags: asset.fileTags.map((fileTag) => ({
             id: fileTag.tag.id,
             name: fileTag.tag.name,
           })),
           shareLink: {
-            url: this.createShareUrl(shareLink?.token ?? ''),
-            token: shareLink?.token ?? '',
+            url: isShareLinkActionable ? this.createShareUrl(actionableShareToken) : '',
+            token: actionableShareToken,
             expiresAt,
             isPasswordProtected,
           },
@@ -162,8 +167,11 @@ export class FileAssetsService {
       throw new ForbiddenException('You can delete only your own files.');
     }
 
-    await this.storageService.delete(asset.storagePath);
-    await this.fileAssetsRepository.markDeleted(fileAssetId);
+    if (asset.storagePath) {
+      await this.storageService.delete(asset.storagePath);
+    }
+
+    await this.fileAssetsRepository.deleteById(fileAssetId);
 
     return {
       id: fileAssetId,

@@ -67,6 +67,7 @@ describe('FileAssetsService.create', () => {
       mimeType: input.mimeType,
       size: BigInt(input.size),
       uploadedAt: new Date('2026-07-08T10:30:00.000Z'),
+      expiredAt: null,
       deletedAt: null,
       shareLink: {
         id: 'share-id',
@@ -159,6 +160,7 @@ describe('FileAssetsService.create', () => {
       mimeType: 'application/pdf',
       size: BigInt(5),
       uploadedAt: new Date(),
+      expiredAt: null,
       deletedAt: null,
       shareLink: {
         id: 'share-id',
@@ -262,8 +264,8 @@ describe('FileAssetsService.delete', () => {
   const expirationService = new ExpirationService();
   const repository = {
     findById: jest.fn(),
-    markDeleted: jest.fn(),
-  } as unknown as jest.Mocked<Pick<FileAssetsRepository, 'findById' | 'markDeleted'>>;
+    deleteById: jest.fn(),
+  } as unknown as jest.Mocked<Pick<FileAssetsRepository, 'findById' | 'deleteById'>>;
   const storage = {
     delete: jest.fn(),
   } as unknown as jest.Mocked<Pick<StorageService, 'delete'>>;
@@ -280,10 +282,10 @@ describe('FileAssetsService.delete', () => {
     );
   });
 
-  it('deletes the physical file and marks an owned file as deleted', async () => {
+  it('deletes the physical file and removes an owned file asset from the database', async () => {
     repository.findById.mockResolvedValue(createPersistedFileAsset({ ownerId: 'user-id' }));
     storage.delete.mockResolvedValue(undefined);
-    repository.markDeleted.mockResolvedValue(createPersistedFileAsset({ ownerId: 'user-id' }));
+    repository.deleteById.mockResolvedValue(createPersistedFileAsset({ ownerId: 'user-id' }));
 
     await expect(service.delete('file-id', 'user-id')).resolves.toEqual({
       id: 'file-id',
@@ -291,7 +293,19 @@ describe('FileAssetsService.delete', () => {
     });
 
     expect(storage.delete).toHaveBeenCalledWith('/storage/document.pdf');
-    expect(repository.markDeleted).toHaveBeenCalledWith('file-id');
+    expect(repository.deleteById).toHaveBeenCalledWith('file-id');
+  });
+
+  it('removes an expired history entry even when the physical file is already gone', async () => {
+    repository.findById.mockResolvedValue(
+      createPersistedFileAsset({ ownerId: 'user-id', storagePath: null }),
+    );
+    repository.deleteById.mockResolvedValue(createPersistedFileAsset({ ownerId: 'user-id' }));
+
+    await service.delete('file-id', 'user-id');
+
+    expect(storage.delete).not.toHaveBeenCalled();
+    expect(repository.deleteById).toHaveBeenCalledWith('file-id');
   });
 
   it('rejects deletion when the authenticated user is not the owner', async () => {
@@ -300,7 +314,7 @@ describe('FileAssetsService.delete', () => {
     await expect(service.delete('file-id', 'user-id')).rejects.toBeInstanceOf(ForbiddenException);
 
     expect(storage.delete).not.toHaveBeenCalled();
-    expect(repository.markDeleted).not.toHaveBeenCalled();
+    expect(repository.deleteById).not.toHaveBeenCalled();
   });
 
   it('returns not found when the file id does not exist', async () => {
@@ -309,20 +323,21 @@ describe('FileAssetsService.delete', () => {
     await expect(service.delete('missing-file-id', 'user-id')).rejects.toBeInstanceOf(NotFoundException);
 
     expect(storage.delete).not.toHaveBeenCalled();
-    expect(repository.markDeleted).not.toHaveBeenCalled();
+    expect(repository.deleteById).not.toHaveBeenCalled();
   });
 });
 
-function createPersistedFileAsset(input: { ownerId: string }) {
+function createPersistedFileAsset(input: { ownerId: string; storagePath?: string | null }) {
   return {
     id: 'file-id',
     ownerId: input.ownerId,
     originalName: 'document.pdf',
     storageName: 'stored-document.pdf',
-    storagePath: '/storage/document.pdf',
+    storagePath: input.storagePath === undefined ? '/storage/document.pdf' : input.storagePath,
     mimeType: 'application/pdf',
     size: BigInt(12),
     uploadedAt: new Date('2026-07-08T10:30:00.000Z'),
+    expiredAt: null,
     deletedAt: null,
     shareLink: {
       id: 'share-id',

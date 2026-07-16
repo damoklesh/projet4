@@ -65,6 +65,10 @@ export class ShareLinksService {
       }
     }
 
+    if (!shareLink.fileAsset.storagePath) {
+      throw new GoneException('Shared file is no longer stored.');
+    }
+
     const stream = this.storageService.createReadStream(shareLink.fileAsset.storagePath);
     await this.shareLinksRepository.incrementDownloadCount(shareLink.id);
 

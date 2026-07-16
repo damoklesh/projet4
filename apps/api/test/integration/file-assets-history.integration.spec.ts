@@ -18,7 +18,7 @@ describe('GET /me/file-assets', () => {
     createWithShareLink: jest.fn(),
     listForOwner: jest.fn(),
     findById: jest.fn(),
-    markDeleted: jest.fn(),
+    deleteById: jest.fn(),
   };
   const storage = {
     save: jest.fn(),
@@ -239,6 +239,39 @@ describe('GET /me/file-assets', () => {
       });
   });
 
+  it('keeps expired files in history without an actionable share link', async () => {
+    const token = jwtService.sign({ sub: 'user-a', email: 'user-a@example.com' });
+    repository.listForOwner.mockResolvedValue({
+      items: [
+        createFileAsset({
+          expiredAt: new Date('2026-07-16T10:30:00.000Z'),
+          storageName: null,
+          storagePath: null,
+          shareLinkExpiresAt: new Date('2026-07-15T10:30:00.000Z'),
+        }),
+      ],
+      total: 1,
+    });
+
+    await request(app.getHttpServer())
+      .get('/me/file-assets?status=expired')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.data.items[0]).toMatchObject({
+          id: 'file-id',
+          fileName: 'document.pdf',
+          status: 'expired',
+          isPasswordProtected: false,
+          shareLink: {
+            url: '',
+            token: '',
+            isPasswordProtected: false,
+          },
+        });
+      });
+  });
+
   it('validates pagination, status, tag, sort and order query parameters', async () => {
     const token = jwtService.sign({ sub: 'user-a', email: 'user-a@example.com' });
 
@@ -250,16 +283,26 @@ describe('GET /me/file-assets', () => {
   });
 });
 
-function createFileAsset(overrides: Partial<{ id: string; originalName: string }> = {}) {
+function createFileAsset(
+  overrides: Partial<{
+    id: string;
+    originalName: string;
+    expiredAt: Date | null;
+    storageName: string | null;
+    storagePath: string | null;
+    shareLinkExpiresAt: Date;
+  }> = {},
+) {
   return {
     id: overrides.id ?? 'file-id',
     ownerId: 'user-a',
     originalName: overrides.originalName ?? 'document.pdf',
-    storageName: 'stored-document.pdf',
-    storagePath: '/storage/document.pdf',
+    storageName: overrides.storageName === undefined ? 'stored-document.pdf' : overrides.storageName,
+    storagePath: overrides.storagePath === undefined ? '/storage/document.pdf' : overrides.storagePath,
     mimeType: 'application/pdf',
     size: BigInt(245760),
     uploadedAt: new Date('2026-07-08T10:30:00.000Z'),
+    expiredAt: overrides.expiredAt ?? null,
     deletedAt: null,
     shareLink: {
       id: 'share-id',
@@ -267,7 +310,7 @@ function createFileAsset(overrides: Partial<{ id: string; originalName: string }
       token: 'share-token',
       passwordHash: 'hashed-password',
       createdAt: new Date('2026-07-08T10:30:00.000Z'),
-      expiresAt: new Date('2099-07-15T10:30:00.000Z'),
+      expiresAt: overrides.shareLinkExpiresAt ?? new Date('2099-07-15T10:30:00.000Z'),
       downloadCount: 0,
     },
     fileTags: [

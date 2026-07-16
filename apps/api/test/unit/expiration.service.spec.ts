@@ -20,4 +20,14 @@ describe('ExpirationService', () => {
       }),
     ).toBe('expired');
   });
+
+  it('marks files already purged by the cleanup job as expired', () => {
+    expect(
+      service.getFunctionalStatus({
+        deletedAt: null,
+        expiredAt: new Date(),
+        expiresAt: new Date(Date.now() + 60_000),
+      }),
+    ).toBe('expired');
+  });
 });

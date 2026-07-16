@@ -33,3 +33,19 @@ export function getExpirationLabel(expiresAt: string): string {
 
   return `Ce fichier expire dans ${diffDays} jours`;
 }
+
+export function getRetentionLabel(expiresAt: string): string {
+  const end = new Date(expiresAt).getTime();
+  const now = Date.now();
+  const diffDays = Math.max(1, Math.ceil((end - now) / (24 * 60 * 60 * 1000)));
+
+  if (diffDays === 1) {
+    return 'Felicitations, ton fichier sera conserve chez nous pendant une journee !';
+  }
+
+  if (diffDays === 7) {
+    return 'Felicitations, ton fichier sera conserve chez nous pendant une semaine !';
+  }
+
+  return `Felicitations, ton fichier sera conserve chez nous pendant ${diffDays} jours !`;
+}
