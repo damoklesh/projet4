@@ -17,9 +17,9 @@ Binary files are stored on disk under `apps/api/storage/uploads/`. PostgreSQL st
 
 Make sure these tools are available:
 
-- Node.js `>=20.11`
+- Node.js `>=20.19.0`
 - npm
-- Docker Desktop or Docker Engine with Docker Compose
+- Docker Desktop or Docker Engine with Docker Compose, used for PostgreSQL and for the full Docker runtime
 
 ### 2. Install dependencies
 
@@ -51,7 +51,7 @@ DATABASE_URL="postgresql://datashare:datashare@localhost:5432/datashare?schema=p
 
 ### 4. Start PostgreSQL
 
-The compose file starts only PostgreSQL for local development:
+PostgreSQL is always started with Docker for local development:
 
 ```bash
 docker compose up -d postgres
@@ -91,7 +91,7 @@ This creates the DataShare metadata tables in PostgreSQL:
 
 ### 7. Start the backend API
 
-In one terminal:
+In this mode, PostgreSQL runs in Docker and the API/web apps run directly with Node.js. In one terminal:
 
 ```bash
 npm run dev -w apps/api
@@ -140,6 +140,28 @@ To also remove the local PostgreSQL volume:
 docker compose down -v
 ```
 
+## Launch With Docker
+
+The compose file can also build and run the complete local stack: PostgreSQL, API and web.
+
+```bash
+docker compose up -d --build postgres api web
+```
+
+The API image applies Prisma migrations automatically at startup with `prisma migrate deploy`, so no manual migration command is required for this Docker flow.
+
+The services are exposed at:
+
+- Web: http://localhost:5173
+- API: http://localhost:3000
+- Swagger/OpenAPI: http://localhost:3000/docs
+
+Stop the full Docker stack with:
+
+```bash
+docker compose down
+```
+
 ## Quality
 
 ```bash
@@ -183,6 +205,17 @@ npm run perf:k6
 ```
 
 The human-readable performance report is maintained in `docs/PERF.md`.
+
+## CI And AWS Deployment
+
+Continuous integration is defined in `.github/workflows/ci.yaml`. It runs quality checks, API tests, web tests, Cypress E2E tests and a real API E2E flow with Docker Compose.
+
+AWS deployment is documented in:
+
+- `infra/aws/README.md` for the architecture and deployment overview
+- `infra/aws/nextSteps.md` for the step-by-step Terraform and ECR commands
+
+Deployment to AWS is currently a documented manual flow, not an automatic GitHub Actions CD pipeline.
 
 ## Coverage Generation
 
@@ -249,4 +282,4 @@ npm run api:db:reset
 npm run api:db:studio
 ```
 
-The MVP skeleton intentionally keeps business logic light. Controllers, services, repositories, DTOs, shared types, and test folders are in place so implementation can proceed module by module.
+No seed data is required for a fresh installation. Create users through the registration screen or `POST /auth/register`.

@@ -12,11 +12,13 @@ This folder shows an AWS-native deployment for DataShare using:
 
 The stack is intentionally commented and parameterized so it can be adapted before real production use.
 
-## CI/CD With GitHub Actions
+## CI With GitHub Actions
 
 I implemented a GitHub Actions pipeline to run the project checks automatically on pushes and pull requests. This keeps regressions visible before code is merged by running quality checks, API unit and integration tests, web tests, Cypress E2E tests, and a real API E2E flow with Docker Compose.
 
 The workflow is defined in `.github/workflows/ci.yaml`. It installs the Node.js workspace, generates the Prisma client, builds the shared package where needed, runs the test suites, and starts Docker services for the end-to-end scenario that exercises the web app against the real API.
+
+There is no automatic AWS deployment pipeline in GitHub Actions for the MVP. AWS deployment is a manual Terraform and ECR flow documented below and in `nextSteps.md`.
 
 ## Dockerisation And AWS Deployment
 

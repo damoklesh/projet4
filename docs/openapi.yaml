@@ -128,11 +128,10 @@ paths:
         L'implémentation backend doit traiter le fichier en streaming afin d'éviter
         de charger l'intégralité du fichier en mémoire.
 
-        Si un JWT est fourni, le fichier est rattaché à l'utilisateur connecté.
-        Sans JWT, le fichier est considéré comme anonyme et ne sera pas visible dans l'historique utilisateur.
+        Le JWT est obligatoire. Le fichier est rattaché à l'utilisateur connecté
+        et reste visible dans son historique tant qu'il n'est pas supprimé manuellement.
       security:
         - bearerAuth: []
-        - {}
       requestBody:
         required: true
         content:
@@ -992,11 +991,11 @@ components:
 
         active : le fichier est disponible au téléchargement.
         expired : le lien de partage associé n'est plus valide.
-        deleted : le fichier a été supprimé par son propriétaire.
+        La suppression manuelle est définitive : la ligne n'est plus retournée
+        dans l'historique utilisateur.
       enum:
         - active
         - expired
-        - deleted
       example: "active"
 
     FileAssetStatusFilter:
